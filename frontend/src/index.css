@@ -1,0 +1,95 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #0F172A;
+  --color-accent: #38BDF8;
+  --color-accent-dark: #0EA5E9;
+  --color-success: #10B981;
+  --color-warning: #F59E0B;
+  --color-sidebar: #FFFFFF;
+  --color-bg-main: #F8FAFC;
+  --font-sans: "Plus Jakarta Sans", sans-serif;
+  
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  --shadow-dashboard: 0 8px 30px rgba(0, 0, 0, 0.04);
+}
+
+@layer base {
+  body {
+    background-color: var(--color-bg-main);
+    color: var(--color-primary);
+    font-family: "Plus Jakarta Sans", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+}
+
+@layer utilities {
+  .glass-panel {
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+  }
+  
+  .glass-card {
+    background: #FFFFFF;
+    border: 1px solid #F1F5F9;
+    box-shadow: var(--shadow-dashboard);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .glass-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.06);
+  }
+
+  .sidebar-item {
+    @apply flex items-center justify-center w-12 h-12 rounded-xl transition-all duration-300 cursor-pointer;
+  }
+
+  .sidebar-item-active {
+    @apply bg-primary text-white shadow-lg shadow-primary/20;
+  }
+
+  .sidebar-item-inactive {
+    @apply text-slate-400 hover:bg-slate-100 hover:text-primary;
+  }
+
+  .status-badge {
+    @apply px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider;
+  }
+
+  .status-ready { @apply bg-[#E0F2FE] text-[#0EA5E9]; }
+  .status-processing { @apply bg-[#FFFBEB] text-[#D97706]; }
+  .status-waiting { @apply bg-[#F1F5F9] text-[#64748B]; }
+
+  .mesh-bg {
+    background-color: #f8fafc;
+    background-image: 
+      radial-gradient(at 0% 0%, hsla(201,100%,94%,1) 0px, transparent 50%),
+      radial-gradient(at 100% 0%, hsla(180,100%,95%,1) 0px, transparent 50%);
+  }
+}
+
+/* Animations */
+@keyframes slide-in-right {
+  0% { transform: translateX(20px); opacity: 0; }
+  100% { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes fade-in {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+.animate-slide-in {
+  animation: slide-in-right 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.4s ease-out forwards;
+}
+
