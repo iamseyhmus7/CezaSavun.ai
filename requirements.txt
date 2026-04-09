@@ -16,5 +16,6 @@ structlog==24.4.0
 redis==5.1.0
 celery==5.4.0
 pillow==11.0.0
-
+email-validator==2.2.0
+bcrypt==3.2.0
 pyyaml==6.0.1
