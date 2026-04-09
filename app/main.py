@@ -20,6 +20,14 @@ app.add_middleware(
 
 app.include_router(api_router, prefix="/api/v1")
 
+@app.on_event("startup")
+async def on_startup():
+    # Veritabanı tablolarını oluştur
+    from app.db.base import Base # Tüm modelleri içeren base
+    from app.db.session import engine
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
 @app.get("/health")
 def health_check():
     return {"status": "ok", "app": settings.APP_NAME}
