@@ -1,0 +1,21 @@
+# Docker Build Context Exclusions
+node_modules
+frontend/node_modules
+.git
+.gitignore
+.env
+Dockerfile
+docker-compose.yml
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.db
+.sqlite
+*.db
+*.sqlite3
+.venv
+venv
+.DS_Store
+.vscode
+.idea
