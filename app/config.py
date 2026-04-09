@@ -19,6 +19,10 @@ class Settings(BaseSettings):
     GOOGLE_API_KEY: str
     GEMINI_MODEL: str = "gemini-3-flash-preview"
     
+    # Google OAuth
+    GOOGLE_CLIENT_ID: str = ""
+    GOOGLE_CLIENT_SECRET: str = ""
+    
     # JWT Auth
     JWT_SECRET: str
     JWT_ALGORITHM: str = "HS256"
