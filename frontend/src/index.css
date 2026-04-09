@@ -2,6 +2,7 @@
 
 @theme {
   --color-primary: #0F172A;
+  --color-deep-navy: #001f3f;
   --color-accent: #38BDF8;
   --color-accent-dark: #0EA5E9;
   --color-success: #10B981;
@@ -15,6 +16,17 @@
   --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
   --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
   --shadow-dashboard: 0 8px 30px rgba(0, 0, 0, 0.04);
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  50% { transform: translateX(5px); }
+  75% { transform: translateX(-5px); }
+}
+
+.animate-shake {
+  animation: shake 0.4s ease-in-out;
 }
 
 @layer base {
