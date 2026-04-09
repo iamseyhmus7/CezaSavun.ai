@@ -4,10 +4,16 @@ import {
   Download, Eye, Sparkles, Clock, History, AlertTriangle, 
   Fingerprint, ShieldCheck, Loader2, Home, FolderOpen, 
   Users, Calendar, Settings, Search, Bell, ExternalLink,
-  ChevronDown, Filter, LayoutGrid, MoreHorizontal, User
+  ChevronDown, Filter, LayoutGrid, MoreHorizontal, User, LogOut
 } from 'lucide-react';
 
+import Auth from './Auth';
+import { GoogleOAuthProvider } from '@react-oauth/google';
+
 export default function App() {
+  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+
+  const [view, setView] = useState('login');
   const [step, setStep] = useState(1);
   const [analysisPhase, setAnalysisPhase] = useState(0);
   const [apiResult, setApiResult] = useState(null);
@@ -70,6 +76,14 @@ export default function App() {
     document.body.removeChild(element);
   };
 
+  if (view === 'login' || view === 'register') {
+    return (
+      <GoogleOAuthProvider clientId={googleClientId}>
+        <Auth setView={setView} />
+      </GoogleOAuthProvider>
+    );
+  }
+
   return (
     <div className="flex h-screen bg-bg-main overflow-hidden">
       
@@ -84,8 +98,11 @@ export default function App() {
           <SidebarItem icon={<Users size={22} />} />
           <SidebarItem icon={<Calendar size={22} />} />
         </nav>
-        <div className="mt-auto">
+        <div className="mt-auto flex flex-col gap-4">
           <SidebarItem icon={<Settings size={22} />} />
+          <div onClick={() => setView('login')} title="Çıkış Yap">
+             <SidebarItem icon={<LogOut size={22} />} />
+          </div>
         </div>
       </aside>
 
