@@ -1,62 +1,148 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from app.db.session import get_db
 from app.db.tables.user import User
-from app.models.user import UserCreate, UserLogin, UserResponse, Token, GoogleLogin
+from app.models.user import UserCreate, UserLogin, UserResponse, Token, GoogleLogin, OTPVerify, ForgotPasswordRequest, PasswordReset
 from app.core.security import get_password_hash, verify_password, create_access_token
-from uuid import uuid4
+from app.services.email_service import send_otp_email, send_reset_password_email
+from fastapi_limiter.depends import RateLimiter
+import redis.asyncio as redis
+from app.config import settings
+import random
+import string
+from datetime import timedelta
+import requests as py_requests
 
 router = APIRouter()
 
-@router.post("/register", response_model=UserResponse)
-async def register(user_in: UserCreate, db: AsyncSession = Depends(get_db)):
-    # Check if user exists
+async def get_redis():
+    r = redis.from_url(settings.REDIS_URL, encoding="utf-8", decode_responses=True)
+    try:
+        yield r
+    finally:
+        await r.aclose()
+
+@router.post("/register", response_model=UserResponse, dependencies=[Depends(RateLimiter(times=5, seconds=60))])
+async def register(user_in: UserCreate, db: AsyncSession = Depends(get_db), r: redis.Redis = Depends(get_redis)):
+    # 1. Bot Koruması (Mock reCAPTCHA)
+    if user_in.captcha_token == "fail":
+        raise HTTPException(status_code=400, detail="Bot tespiti: Geçersiz captcha")
+    
+    # 2. Kullanıcı Kontrolü
     result = await db.execute(select(User).where(User.email == user_in.email))
     user = result.scalars().first()
     if user:
         raise HTTPException(
             status_code=400,
-            detail="The user with this email already exists in the system.",
+            detail="Bu e-posta adresi zaten kayıtlı.",
         )
     
+    # 3. Kullanıcı Oluşturma (Pasif)
     user_data = user_in.model_dump()
+    user_data.pop("captcha_token")
     password = user_data.pop("password")
     
     new_user = User(
         **user_data,
-        hashed_password=get_password_hash(password)
+        hashed_password=get_password_hash(password),
+        is_verified=False
     )
     db.add(new_user)
     await db.commit()
     await db.refresh(new_user)
+    
+    # 4. OTP Oluşturma ve Saklama (Redis, 5 dk)
+    otp = "".join(random.choices(string.digits, k=6))
+    await r.setex(f"otp:{new_user.email}", 300, otp)
+    
+    # 5. E-posta Gönderimi (Mock)
+    await send_otp_email(new_user.email, otp)
+    
     return new_user
 
-@router.post("/login", response_model=Token)
+@router.post("/verify-otp")
+async def verify_otp(verify_in: OTPVerify, db: AsyncSession = Depends(get_db), r: redis.Redis = Depends(get_redis)):
+    # 1. Redis'ten kodu al
+    stored_otp = await r.get(f"otp:{verify_in.email}")
+    if not stored_otp or stored_otp != verify_in.otp:
+        raise HTTPException(status_code=400, detail="Geçersiz veya süresi dolmuş kod")
+    
+    # 2. Kullanıcıyı aktif et
+    result = await db.execute(select(User).where(User.email == verify_in.email))
+    user = result.scalars().first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
+    
+    user.is_verified = True
+    await db.commit()
+    await r.delete(f"otp:{verify_in.email}")
+    
+    return {"message": "Hesabınız başarıyla doğrulandı"}
+
+@router.post("/login", response_model=Token, dependencies=[Depends(RateLimiter(times=5, seconds=60))])
 async def login(user_in: UserLogin, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).where(User.email == user_in.email))
     user = result.scalars().first()
     if not user:
-        raise HTTPException(status_code=400, detail="Incorrect email or password")
-    if not verify_password(user_in.password, user.hashed_password):
-        raise HTTPException(status_code=400, detail="Incorrect email or password")
+        raise HTTPException(status_code=400, detail="E-posta veya şifre hatalı")
     
-    access_token = create_access_token(subject=user.id)
+    if not user.is_verified:
+        raise HTTPException(status_code=403, detail="Hesabınız doğrulanmamış. Lütfen e-posta kodunu girin.", headers={"X-Error-Code": "unverified"})
+        
+    if not verify_password(user_in.password, user.hashed_password):
+        raise HTTPException(status_code=400, detail="E-posta veya şifre hatalı")
+    
+    access_token = create_access_token(subject=str(user.id))
     return {
         "access_token": access_token,
         "token_type": "bearer"
     }
 
-import requests as py_requests
+@router.post("/forgot-password", dependencies=[Depends(RateLimiter(times=3, seconds=60))])
+async def forgot_password(req: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(User).where(User.email == req.email))
+    user = result.scalars().first()
+    
+    if not user:
+        # Güvenlik için e-posta yoksa bile başarılı dönüyoruz ama e-posta göndermiyoruz
+        return {"message": "E-posta gönderildi (Eğer kayıtlı ise)"}
+    
+    # 15 dakika geçerli reset token
+    reset_token = create_access_token(subject=str(user.id), expires_delta=timedelta(minutes=15))
+    
+    # E-posta Gönderimi (Mock)
+    await send_reset_password_email(user.email, reset_token)
+    
+    return {"message": "Şifre sıfırlama talimatları e-posta adresinize gönderildi"}
+
+@router.post("/reset-password")
+async def reset_password(data: PasswordReset, db: AsyncSession = Depends(get_db)):
+    # Burada handle_google_login'dekine benzer şekilde token doğrulaması yapılacak
+    # Basitlik için create_access_token ile üretilen JWT'yi kullanıyoruz
+    from jose import jwt, JWTError
+    
+    try:
+        payload = jwt.decode(data.token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
+        user_id = payload.get("sub")
+        if not user_id:
+            raise HTTPException(status_code=400, detail="Geçersiz token")
+    except JWTError:
+        raise HTTPException(status_code=400, detail="Geçersiz veya süresi dolmuş token")
+        
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalars().first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
+        
+    user.hashed_password = get_password_hash(data.new_password)
+    await db.commit()
+    
+    return {"message": "Şifreniz başarıyla güncellendi"}
 
 @router.post("/google", response_model=Token)
 async def login_google(google_in: GoogleLogin, db: AsyncSession = Depends(get_db)):
-    """
-    Real endpoint for Google OAuth2
-    Verifies the Access Token via Google UserInfo API.
-    """
     try:
-        # Verify the Access Token via Google's API
         user_info_res = py_requests.get(
             f"https://www.googleapis.com/oauth2/v3/userinfo?access_token={google_in.token}"
         )
@@ -65,38 +151,35 @@ async def login_google(google_in: GoogleLogin, db: AsyncSession = Depends(get_db
             raise HTTPException(status_code=400, detail="Invalid Google token")
 
         user_info = user_info_res.json()
-        
-        # Get the user's Google ID and email.
         google_id = user_info['sub']
         email = user_info['email']
         name = user_info.get('given_name', 'Google')
         surname = user_info.get('family_name', 'User')
 
-        # Check if user exists by google_id or email
         result = await db.execute(
             select(User).where((User.google_id == google_id) | (User.email == email))
         )
         user = result.scalars().first()
 
         if not user:
-            # Create new user
             user = User(
                 email=email,
                 name=name,
                 surname=surname,
                 google_id=google_id,
-                hashed_password=None # Google users don't have a local password
+                hashed_password=None,
+                is_verified=True # Google users are pre-verified
             )
             db.add(user)
             await db.commit()
             await db.refresh(user)
         elif not user.google_id:
-            # Link existing email account to Google
             user.google_id = google_id
+            user.is_verified = True
             await db.commit()
             await db.refresh(user)
 
-        access_token = create_access_token(subject=user.id)
+        access_token = create_access_token(subject=str(user.id))
         return {
             "access_token": access_token,
             "token_type": "bearer"
