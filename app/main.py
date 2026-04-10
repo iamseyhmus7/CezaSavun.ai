@@ -1,6 +1,7 @@
-from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi import FastAPI, Request
 from app.config import settings
 from app.api.v1.router import api_router
 
@@ -22,6 +23,13 @@ app.include_router(api_router, prefix="/api/v1")
 
 @app.on_event("startup")
 async def on_startup():
+    # Redis bağlantısını kur ve Rate Limiter'ı başlat
+    import redis.asyncio as redis
+    from fastapi_limiter import FastAPILimiter
+    
+    r = redis.from_url(settings.REDIS_URL, encoding="utf-8", decode_responses=True)
+    await FastAPILimiter.init(r)
+
     # Veritabanı tablolarını oluştur
     from app.db.base import Base # Tüm modelleri içeren base
     from app.db.session import engine
@@ -35,5 +43,20 @@ def health_check():
 # Frontend için Static Files - Proje kök dizinindeki frontend klasörü
 import os
 frontend_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "dist")
+
+@app.exception_handler(404)
+async def spa_404_handler(request: Request, exc):
+    # API istekleri için gerçekten 404 dön
+    if request.url.path.startswith("/api/v1") or request.url.path == "/health":
+        return JSONResponse(status_code=404, content={"detail": f"API endpoint {request.url.path} not found"})
+    
+    # Rotalar için index.html dön
+    index_file = os.path.join(frontend_dir, "index.html")
+    if os.path.exists(index_file):
+        with open(index_file, "r", encoding="utf-8") as f:
+            return HTMLResponse(content=f.read(), status_code=200)
+    
+    return JSONResponse(status_code=404, content={"detail": "Not Found"})
+
 if os.path.exists(frontend_dir):
     app.mount("/", StaticFiles(directory=frontend_dir, html=True), name="frontend")
