@@ -2,7 +2,9 @@
 
 @theme {
   --color-primary: #0F172A;
-  --color-deep-navy: #001f3f;
+  --color-deep-navy: #001A33;
+  --color-deep-navy-dark: #000D1A;
+  --color-deep-navy-light: #003366;
   --color-accent: #38BDF8;
   --color-accent-dark: #0EA5E9;
   --color-success: #10B981;
@@ -25,8 +27,17 @@
   75% { transform: translateX(-5px); }
 }
 
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 20px rgba(56, 189, 248, 0.3); }
+  50% { box-shadow: 0 0 40px rgba(56, 189, 248, 0.6); }
+}
+
 .animate-shake {
   animation: shake 0.4s ease-in-out;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 3s infinite ease-in-out;
 }
 
 @layer base {
@@ -58,6 +69,23 @@
     box-shadow: 0 12px 40px rgba(0, 0, 0, 0.06);
   }
 
+  .dark-glass {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .dark-glass-strong {
+    background: rgba(0, 26, 51, 0.7);
+    backdrop-filter: blur(32px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8);
+  }
+
+  .accent-glow {
+    text-shadow: 0 0 10px rgba(56, 189, 248, 0.5);
+  }
+
   .sidebar-item {
     @apply flex items-center justify-center w-12 h-12 rounded-xl transition-all duration-300 cursor-pointer;
   }
@@ -84,6 +112,13 @@
       radial-gradient(at 0% 0%, hsla(201,100%,94%,1) 0px, transparent 50%),
       radial-gradient(at 100% 0%, hsla(180,100%,95%,1) 0px, transparent 50%);
   }
+
+  .navy-mesh-bg {
+    background-color: #001A33;
+    background-image: 
+      radial-gradient(at 0% 0%, hsla(201,100%,20%,0.5) 0px, transparent 50%),
+      radial-gradient(at 100% 100%, hsla(180,100%,20%,0.5) 0px, transparent 50%);
+  }
 }
 
 /* Animations */
@@ -97,6 +132,11 @@
   100% { opacity: 1; }
 }
 
+@keyframes fade-up {
+  0% { opacity: 0; transform: translateY(20px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
 .animate-slide-in {
   animation: slide-in-right 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
@@ -104,4 +144,9 @@
 .animate-fade-in {
   animation: fade-in 0.4s ease-out forwards;
 }
+
+.animate-fade-up {
+  animation: fade-up 0.6s ease-out forwards;
+}
+
 
