@@ -10,13 +10,26 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     password: str = Field(..., min_length=8)
+    captcha_token: str | None = None
 
 class UserLogin(BaseModel):
     email: EmailStr
     password: str
 
+class OTPVerify(BaseModel):
+    email: EmailStr
+    otp: str
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+class PasswordReset(BaseModel):
+    token: str
+    new_password: str = Field(..., min_length=8)
+
 class UserResponse(UserBase):
     id: UUID
+    is_verified: bool
     created_at: datetime
     
     model_config = {"from_attributes": True}
