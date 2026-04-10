@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
-import { Mail, Lock, ArrowRight, Loader2, CheckCircle2 } from 'lucide-react';
+import { Mail, Lock, ArrowRight, Loader2, CheckCircle2, Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { motion } from 'framer-motion';
 import { useGoogleLogin } from '@react-oauth/google';
+import { useNavigate, Link } from 'react-router-dom';
 
-export default function Login({ setAuthView, onLoginSuccess }) {
+export default function Login() {
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [isError, setIsError] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -20,7 +23,6 @@ export default function Login({ setAuthView, onLoginSuccess }) {
     onSuccess: async (tokenResponse) => {
       toast.loading('Google doğrulanıyor...');
       try {
-        // credential/token verisini backend'e gönder
         const response = await fetch('/api/v1/auth/google', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -34,7 +36,7 @@ export default function Login({ setAuthView, onLoginSuccess }) {
           toast.dismiss();
           toast.success('Google ile başarıyla giriş yapıldı!');
           setIsSuccess(true);
-          setTimeout(onLoginSuccess, 1000);
+          setTimeout(() => navigate('/dashboard'), 1000);
         } else {
           toast.dismiss();
           toast.error(data.detail || 'Google girişi başarısız!');
@@ -74,7 +76,13 @@ export default function Login({ setAuthView, onLoginSuccess }) {
         localStorage.setItem('token', data.access_token);
         toast.success('Başarıyla giriş yapıldı!');
         setIsSuccess(true);
-        setTimeout(onLoginSuccess, 800);
+        setTimeout(() => navigate('/dashboard'), 800);
+      } else if (response.status === 403 && data.detail.includes('doğrulanmamış')) {
+        toast.error('Hesabınız henüz doğrulanmamış!');
+        setTimeout(() => navigate(`/auth/verify?email=${encodeURIComponent(email)}`), 1000);
+      } else if (response.status === 429) {
+        toast.error('Çok fazla istek gönderdiniz, lütfen bekleyin.');
+        triggerError();
       } else {
         toast.error(data.detail || 'Giriş başarısız!');
         triggerError();
@@ -89,7 +97,13 @@ export default function Login({ setAuthView, onLoginSuccess }) {
 
   return (
     <motion.div 
-      animate={isError ? { x: [-10, 10, -10, 10, 0] } : {}}
+      initial={{ opacity: 0, x: 20 }}
+      animate={{ 
+        opacity: 1, 
+        x: 0,
+        x: isError ? [-10, 10, -10, 10, 0] : 0
+      }}
+      exit={{ opacity: 0, x: -20 }}
       transition={{ duration: 0.4 }}
       className="space-y-6"
     >
@@ -134,20 +148,27 @@ export default function Login({ setAuthView, onLoginSuccess }) {
         <div className="space-y-2">
           <div className="flex items-center justify-between ml-1">
             <label className="text-[11px] font-extrabold text-slate-400 uppercase tracking-widest">Şifre</label>
-            <button type="button" className="text-[11px] font-bold text-accent hover:underline decoration-2">Şifremi Unuttum</button>
+            <Link to="/auth/forgot-password" size="sm" className="text-[11px] font-bold text-accent hover:underline decoration-2">Şifremi Unuttum</Link>
           </div>
           <div className="relative group">
             <div className={`absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-colors ${isError ? 'text-red-500' : isSuccess ? 'text-emerald-500' : 'text-slate-400 group-focus-within:text-accent'}`}>
               <Lock size={18} />
             </div>
             <input
-              type="password"
+              type={showPassword ? "text" : "password"}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className={`w-full pl-11 pr-4 py-4 bg-slate-50 border rounded-2xl text-sm font-bold text-primary focus:outline-none transition-all placeholder:text-slate-300 ring-offset-0
+              className={`w-full pl-11 pr-12 py-4 bg-slate-50 border rounded-2xl text-sm font-bold text-primary focus:outline-none transition-all placeholder:text-slate-300 ring-offset-0
                 ${isError ? 'border-red-500 ring-4 ring-red-500/10' : isSuccess ? 'border-emerald-500 ring-4 ring-emerald-500/10' : 'border-slate-200 focus:border-accent focus:ring-4 focus:ring-accent/10'}`}
               placeholder="••••••••"
             />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-accent transition-colors"
+            >
+              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
           </div>
         </div>
 
@@ -163,7 +184,7 @@ export default function Login({ setAuthView, onLoginSuccess }) {
 
       <p className="text-center text-sm font-bold text-slate-500 border-t border-slate-50 pt-8">
         Henüz hesabın yok mu?{' '}
-        <button onClick={setAuthView} className="text-accent hover:underline decoration-2">Ücretsiz Kayıt Ol</button>
+        <Link to="/auth/register" className="text-accent hover:underline decoration-2">Ücretsiz Kayıt Ol</Link>
       </p>
     </motion.div>
   );
