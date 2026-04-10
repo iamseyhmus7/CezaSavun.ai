@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { User, Mail, Lock, Phone, ArrowRight, Loader2, CheckCircle2 } from 'lucide-react';
+import { User, Mail, Lock, Phone, ArrowRight, Loader2, CheckCircle2, Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { motion } from 'framer-motion';
+import { useNavigate, Link } from 'react-router-dom';
 
-export default function Register({ setAuthView, onRegisterSuccess }) {
+export default function Register() {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     name: '',
     surname: '',
@@ -12,6 +14,8 @@ export default function Register({ setAuthView, onRegisterSuccess }) {
     password: '',
     confirmPassword: ''
   });
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [isError, setIsError] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -50,10 +54,15 @@ export default function Register({ setAuthView, onRegisterSuccess }) {
 
     setLoading(true);
     try {
+      const payload = {
+        ...formData,
+        captcha_token: "mock-valid-token"
+      };
+
       const response = await fetch('/api/v1/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
 
       const data = await response.json();
@@ -61,7 +70,7 @@ export default function Register({ setAuthView, onRegisterSuccess }) {
       if (response.ok) {
         toast.success('Hesabınız başarıyla oluşturuldu!');
         setIsSuccess(true);
-        setTimeout(onRegisterSuccess, 1000);
+        setTimeout(() => navigate(`/auth/verify?email=${encodeURIComponent(formData.email)}`), 1000);
       } else {
         toast.error(data.detail || 'Kayıt başarısız!');
         triggerError();
@@ -79,7 +88,13 @@ export default function Register({ setAuthView, onRegisterSuccess }) {
 
   return (
     <motion.div 
-      animate={isError ? { x: [-10, 10, -10, 10, 0] } : {}}
+      initial={{ opacity: 0, x: 20 }}
+      animate={{ 
+        opacity: 1, 
+        x: 0,
+        x: isError ? [-10, 10, -10, 10, 0] : 0
+      }}
+      exit={{ opacity: 0, x: -20 }}
       transition={{ duration: 0.4 }}
       className="space-y-6"
     >
@@ -127,14 +142,40 @@ export default function Register({ setAuthView, onRegisterSuccess }) {
             <label className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest ml-1">Şifre</label>
             <div className="relative group">
               <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-accent transition-colors"><Lock size={16} /></div>
-              <input type="password" value={formData.password} onChange={(e) => setFormData({...formData, password: e.target.value})} className={inputClass('password')} placeholder="••••••••" />
+              <input 
+                type={showPassword ? "text" : "password"} 
+                value={formData.password} 
+                onChange={(e) => setFormData({...formData, password: e.target.value})} 
+                className={`${inputClass('password')} pr-10`} 
+                placeholder="••••••••" 
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-accent transition-colors"
+              >
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
             </div>
           </div>
           <div className="space-y-1.5">
             <label className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest ml-1">Tekrar</label>
             <div className="relative group">
               <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-accent transition-colors"><Lock size={16} /></div>
-              <input type="password" value={formData.confirmPassword} onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})} className={inputClass('confirmPassword')} placeholder="••••••••" />
+              <input 
+                type={showConfirmPassword ? "text" : "password"} 
+                value={formData.confirmPassword} 
+                onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})} 
+                className={`${inputClass('confirmPassword')} pr-10`} 
+                placeholder="••••••••" 
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-accent transition-colors"
+              >
+                {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
             </div>
           </div>
         </div>
@@ -151,7 +192,7 @@ export default function Register({ setAuthView, onRegisterSuccess }) {
 
       <p className="text-center text-sm font-bold text-slate-500 border-t border-slate-50 pt-6">
         Zaten bir hesabın var mı?{' '}
-        <button onClick={setAuthView} className="text-primary hover:underline decoration-2">Giriş Yap</button>
+        <Link to="/auth/login" className="text-primary hover:underline decoration-2">Giriş Yap</Link>
       </p>
     </motion.div>
   );
