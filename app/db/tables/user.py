@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, DateTime, Uuid
+from sqlalchemy import Column, String, DateTime, Uuid, Boolean
 from sqlalchemy.sql import func
 import uuid
 from app.db.base import Base
@@ -13,4 +13,5 @@ class User(Base):
     phone = Column(String(50), nullable=True)
     google_id = Column(String(255), unique=True, nullable=True, index=True)
     hashed_password = Column(String(255), nullable=True)
+    is_verified = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
