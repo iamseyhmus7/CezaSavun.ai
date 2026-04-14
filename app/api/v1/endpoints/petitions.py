@@ -1,41 +1,88 @@
-from fastapi import APIRouter, File, UploadFile, HTTPException
+from fastapi import APIRouter, File, UploadFile, HTTPException, Depends, Form
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
+from uuid import UUID
+from datetime import datetime
+
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
+
 from app.agents.graph import app_graph
 from app.agents.state import AgentState
+from app.api.v1.deps import get_current_user
+from app.db.session import get_db
+from app.db.tables.user import User
+from app.db.tables.penalty import Penalty
+from app.db.tables.petition import Petition
 
 router = APIRouter()
 
-class PetitionResponse(BaseModel):
+# ── Pydantic Response Modelleri ───────────────────────────────────────────────
+
+class PetitionGenerateResponse(BaseModel):
+    petition_id: str
     status: str
     draft_petition: Optional[str] = None
     quality_score: Optional[int] = None
-    errors: list[str] = []
+    errors: List[str] = []
 
-@router.post("/generate", response_model=PetitionResponse)
-async def generate_petition(file: UploadFile = File(...)):
-    """LangGraph ajanlarını tetikleyerek dilekçe üretir."""
-    
-    print(f"Backend Tetiklendi! Yeni dosya alındı: {file.filename} ({file.content_type})")
-    
-    # 1. Dosya formatı kontrolü (Güvenlik ve Multi-Media Desteği)
+class PetitionListItem(BaseModel):
+    id: UUID
+    client_name: Optional[str]
+    vehicle_plate: Optional[str]
+    penalty_code: Optional[str]
+    status: str
+    quality_score: Optional[int]
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+class PetitionDetail(BaseModel):
+    id: UUID
+    client_name: Optional[str]
+    vehicle_plate: Optional[str]
+    penalty_code: Optional[str]
+    content: Optional[str]
+    status: str
+    quality_score: Optional[int]
+    iteration_count: int
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+# ── POST /generate ────────────────────────────────────────────────────────────
+
+@router.post("/generate", response_model=PetitionGenerateResponse)
+async def generate_petition(
+    file: UploadFile = File(...),
+    client_name: str = Form(""),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Ceza tutanağını alır, LangGraph ajan zincirini çalıştırır,
+    sonucu SQLite DB'ye kaydeder ve petition_id döndürür.
+    """
+    print(f"[generate] Kullanıcı: {current_user.email} | Dosya: {file.filename}")
+
+    # 1. Dosya formatı kontrolü
     allowed_types = ["image/jpeg", "image/png", "image/webp", "application/pdf"]
     if file.content_type not in allowed_types:
         raise HTTPException(
-            status_code=400, 
-            detail="Desteklenmeyen dosya formatı. Lütfen JPG, PNG, WEBP veya PDF yükleyin."
+            status_code=400,
+            detail="Desteklenmeyen format. JPG, PNG, WEBP veya PDF yükleyin.",
         )
-    
-    # 2. Dosya içeriği işleniyor (Görüntü byte'lara çevriliyor)
+
     content = await file.read()
     file_mime_type = file.content_type
-    
-    # 3. LangGraph state inisyalizasyonu (GÜNCELLENDİ: Artık resim gerçekten modele gidiyor!)
+
+    # 2. LangGraph state başlat
     initial_state = AgentState(
         image_path=file.filename,
         input_text="Lütfen ekteki trafik cezası tutanağını bir savunma avukatı gözüyle detaylıca incele.",
-        image_bytes=content,              # <--- SİHİRLİ DOKUNUŞ 1: Resmin kendisi
-        image_mime_type=file_mime_type,   # <--- SİHİRLİ DOKUNUŞ 2: Resmin formatı
+        image_bytes=content,
+        image_mime_type=file_mime_type,
         penalty_detail=None,
         evidence_analysis=None,
         rag_results=[],
@@ -44,22 +91,162 @@ async def generate_petition(file: UploadFile = File(...)):
         quality_status=None,
         feedback=[],
         iteration_count=0,
-        errors=[]
+        errors=[],
     )
-    
-    # Grafı çalıştır
-    print("AI Ajan Zinciri (Orchestrator) başlatılıyor...")
+
+    print("[generate] AI Ajan Zinciri başlatılıyor...")
     try:
         final_state = app_graph.invoke(initial_state)
-        
-        print(f"AI Akışı Tamamlandı. Çıktı Kalite Skoru: {final_state.get('quality_score')}")
-        
-        return PetitionResponse(
-            status=final_state.get("quality_status", "failed"),
-            draft_petition=final_state.get("draft_petition"),
-            quality_score=final_state.get("quality_score"),
-            errors=final_state.get("errors", [])
-        )
+        print(f"[generate] Tamamlandı. Kalite skoru: {final_state.get('quality_score')}")
     except Exception as e:
-        print(f"Graf çalışma hatası: {e}")
-        return PetitionResponse(status="error", errors=[str(e)])
+        print(f"[generate] Graf hatası: {e}")
+        raise HTTPException(status_code=500, detail=f"AI işlem hatası: {str(e)}")
+
+    # 3. Penalty (ceza) kaydı oluştur
+    penalty_detail = final_state.get("penalty_detail") or {}
+    if isinstance(penalty_detail, dict):
+        category      = penalty_detail.get("penalty_category", "diger")
+        penalty_code  = penalty_detail.get("penalty_code")
+        vehicle_plate = penalty_detail.get("vehicle_plate") or ""
+        penalty_date  = None  # date parse later if needed
+    else:
+        # Pydantic model ise
+        category      = getattr(penalty_detail, "penalty_category", "diger")
+        penalty_code  = getattr(penalty_detail, "penalty_code", None)
+        vehicle_plate = getattr(penalty_detail, "vehicle_plate", "") or ""
+        penalty_date  = None
+
+    # category değerini string'e dönüştür
+    if hasattr(category, "value"):
+        category = category.value
+
+    penalty_record = Penalty(
+        user_id=current_user.id,
+        category=str(category),
+        penalty_code=penalty_code,
+        vehicle_plate=vehicle_plate,
+        penalty_date=penalty_date,
+        ocr_result=penalty_detail if isinstance(penalty_detail, dict) else None,
+        status="completed",
+    )
+    db.add(penalty_record)
+    await db.flush()  # penalty_record.id'yi üret (commit olmadan)
+
+    # 4. Petition (dilekçe) kaydı oluştur
+    petition_record = Petition(
+        user_id=current_user.id,
+        penalty_id=penalty_record.id,
+        client_name=client_name or None,
+        content=final_state.get("draft_petition"),
+        quality_score=final_state.get("quality_score"),
+        status=final_state.get("quality_status") or "failed",
+        iteration_count=final_state.get("iteration_count", 0),
+        evidence_analysis=(
+            final_state.get("evidence_analysis").dict()
+            if hasattr(final_state.get("evidence_analysis"), "dict")
+            else final_state.get("evidence_analysis")
+        ),
+    )
+    db.add(petition_record)
+    await db.commit()
+    await db.refresh(petition_record)
+
+    print(f"[generate] DB'ye kaydedildi. Petition ID: {petition_record.id}")
+
+    return PetitionGenerateResponse(
+        petition_id=str(petition_record.id),
+        status=petition_record.status,
+        draft_petition=petition_record.content,
+        quality_score=petition_record.quality_score,
+        errors=final_state.get("errors", []),
+    )
+
+
+# ── GET / — Kullanıcının dilekçe geçmişi ─────────────────────────────────────
+
+@router.get("/", response_model=List[PetitionListItem])
+async def list_petitions(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Giriş yapan kullanıcının tüm dilekçelerini yeniden eskiye sıralar."""
+    result = await db.execute(
+        select(Petition, Penalty)
+        .join(Penalty, Petition.penalty_id == Penalty.id)
+        .where(Petition.user_id == current_user.id)
+        .order_by(Petition.created_at.desc())
+    )
+    rows = result.all()
+
+    items = []
+    for petition, penalty in rows:
+        items.append(
+            PetitionListItem(
+                id=petition.id,
+                client_name=petition.client_name,
+                vehicle_plate=penalty.vehicle_plate,
+                penalty_code=penalty.penalty_code,
+                status=petition.status,
+                quality_score=petition.quality_score,
+                created_at=petition.created_at,
+            )
+        )
+    return items
+
+
+# ── GET /{id} — Tek dilekçe detayı ───────────────────────────────────────────
+
+@router.get("/{petition_id}", response_model=PetitionDetail)
+async def get_petition(
+    petition_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Belirtilen ID'ye sahip dilekçeyi döndürür. Sadece sahibi erişebilir."""
+    result = await db.execute(
+        select(Petition, Penalty)
+        .join(Penalty, Petition.penalty_id == Penalty.id)
+        .where(Petition.id == petition_id, Petition.user_id == current_user.id)
+    )
+    row = result.first()
+
+    if not row:
+        raise HTTPException(status_code=404, detail="Dilekçe bulunamadı.")
+
+    petition, penalty = row
+    return PetitionDetail(
+        id=petition.id,
+        client_name=petition.client_name,
+        vehicle_plate=penalty.vehicle_plate,
+        penalty_code=penalty.penalty_code,
+        content=petition.content,
+        status=petition.status,
+        quality_score=petition.quality_score,
+        iteration_count=petition.iteration_count,
+        created_at=petition.created_at,
+    )
+
+@router.delete("/{petition_id}")
+async def delete_petition(
+    petition_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Belirtilen ID'ye sahip dilekçeyi siler. Sadece sahibi silebilir."""
+    result = await db.execute(
+        select(Petition).where(
+            Petition.id == petition_id, 
+            Petition.user_id == current_user.id
+        )
+    )
+    petition = result.scalars().first()
+    
+    if not petition:
+        raise HTTPException(
+            status_code=404, 
+            detail="Dilekçe bulunamadı veya silme yetkiniz yok."
+        )
+    
+    await db.delete(petition)
+    await db.commit()
+    return {"message": "Dilekçe başarıyla silindi"}
