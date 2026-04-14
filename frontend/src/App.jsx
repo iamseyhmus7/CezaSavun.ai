@@ -12,6 +12,13 @@ import LegalLayout from './pages/Legal/LegalLayout';
 // Pages
 import LandingPage from './LandingPage';
 import Dashboard from './pages/Dashboard';
+import Profile from './pages/Profile';
+import Petitions from './pages/Petitions';
+import Clients from './pages/Clients';
+import Calendar from './pages/Calendar';
+import PetitionView from './pages/PetitionView';
+import PetitionPreview from './pages/PetitionPreview';
+import DashboardLayout from './components/Layout/DashboardLayout';
 import Login from './Login';
 import Register from './Register';
 import VerifyOTP from './VerifyOTP';
@@ -53,9 +60,17 @@ export default function App() {
             <Route path="kvkk" element={<KVKK />} />
           </Route>
 
-          {/* Protected Dashboard Route */}
+          {/* Protected Routes — Now using DashboardLayout */}
           <Route element={<PrivateRoute />}>
-            <Route path="/dashboard" element={<Dashboard />} />
+            <Route element={<DashboardLayout />}>
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/profile" element={<Profile />} />
+              <Route path="/petitions" element={<Petitions />} />
+              <Route path="/clients" element={<Clients />} />
+              <Route path="/calendar" element={<Calendar />} />
+              <Route path="/petition/:id" element={<PetitionView />} />
+              <Route path="/petition/:id/preview" element={<PetitionPreview />} />
+            </Route>
           </Route>
 
           {/* 404 Route */}
