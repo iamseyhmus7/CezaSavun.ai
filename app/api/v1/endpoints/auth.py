@@ -3,9 +3,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from app.db.session import get_db
 from app.db.tables.user import User
-from app.models.user import UserCreate, UserLogin, UserResponse, Token, GoogleLogin, OTPVerify, ForgotPasswordRequest, PasswordReset
+from app.models.user import (
+    UserCreate, UserLogin, UserResponse, Token, GoogleLogin, 
+    OTPVerify, ForgotPasswordRequest, PasswordReset, 
+    UserUpdate, ChangePasswordRequest
+)
 from app.core.security import get_password_hash, verify_password, create_access_token
 from app.services.email_service import send_otp_email, send_reset_password_email
+from app.api.v1.deps import get_current_user
 from fastapi_limiter.depends import RateLimiter
 import redis.asyncio as redis
 from app.config import settings
@@ -15,6 +20,50 @@ from datetime import timedelta
 import requests as py_requests
 
 router = APIRouter()
+
+# ── GET /me ─────────────────────────────────────────────────────────────────
+@router.get("/me", response_model=UserResponse)
+async def get_me(current_user: User = Depends(get_current_user)):
+    """JWT token ile giriş yapan kullanıcının profil bilgilerini döndürür."""
+    return current_user
+
+@router.patch("/me", response_model=UserResponse)
+async def update_me(
+    user_in: UserUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Kullanıcı bilgilerini (ad, soyad, telefon) günceller."""
+    update_data = user_in.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(current_user, field, value)
+    
+    db.add(current_user)
+    await db.commit()
+    await db.refresh(current_user)
+    return current_user
+
+@router.post("/change-password")
+async def change_password(
+    data: ChangePasswordRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Giriş yapmış kullanıcının şifresini değiştirir."""
+    if not current_user.hashed_password:
+        raise HTTPException(
+            status_code=400, 
+            detail="Sosyal hesaplar (Google vb.) için şifre değiştirilemez."
+        )
+    
+    if not verify_password(data.current_password, current_user.hashed_password):
+        raise HTTPException(status_code=400, detail="Mevcut şifre hatalı.")
+    
+    current_user.hashed_password = get_password_hash(data.new_password)
+    db.add(current_user)
+    await db.commit()
+    
+    return {"message": "Şifreniz başarıyla değiştirildi"}
 
 async def get_redis():
     r = redis.from_url(settings.REDIS_URL, encoding="utf-8", decode_responses=True)
@@ -130,7 +179,8 @@ async def reset_password(data: PasswordReset, db: AsyncSession = Depends(get_db)
     except JWTError:
         raise HTTPException(status_code=400, detail="Geçersiz veya süresi dolmuş token")
         
-    result = await db.execute(select(User).where(User.id == user_id))
+    import uuid
+    result = await db.execute(select(User).where(User.id == uuid.UUID(user_id)))
     user = result.scalars().first()
     if not user:
         raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
