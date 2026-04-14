@@ -33,10 +33,13 @@ export default function Login() {
         
         if (response.ok) {
           localStorage.setItem('token', data.access_token);
+          localStorage.setItem('user_email', email);
           toast.dismiss();
           toast.success('Google ile başarıyla giriş yapıldı!');
           setIsSuccess(true);
-          setTimeout(() => navigate('/dashboard'), 1000);
+          setTimeout(() => {
+            window.location.href = '/dashboard';
+          }, 1000);
         } else {
           toast.dismiss();
           toast.error(data.detail || 'Google girişi başarısız!');
@@ -74,9 +77,12 @@ export default function Login() {
 
       if (response.ok) {
         localStorage.setItem('token', data.access_token);
+        localStorage.setItem('user_email', email);
         toast.success('Başarıyla giriş yapıldı!');
         setIsSuccess(true);
-        setTimeout(() => navigate('/dashboard'), 800);
+        setTimeout(() => {
+          window.location.href = '/dashboard';
+        }, 800);
       } else if (response.status === 403 && data.detail.includes('doğrulanmamış')) {
         toast.error('Hesabınız henüz doğrulanmamış!');
         setTimeout(() => navigate(`/auth/verify?email=${encodeURIComponent(email)}`), 1000);
