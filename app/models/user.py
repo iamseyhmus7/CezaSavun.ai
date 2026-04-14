@@ -27,6 +27,15 @@ class PasswordReset(BaseModel):
     token: str
     new_password: str = Field(..., min_length=8)
 
+class UserUpdate(BaseModel):
+    name: str | None = Field(None, min_length=2)
+    surname: str | None = Field(None, min_length=2)
+    phone: str | None = None
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str = Field(..., min_length=8)
+
 class UserResponse(UserBase):
     id: UUID
     is_verified: bool
