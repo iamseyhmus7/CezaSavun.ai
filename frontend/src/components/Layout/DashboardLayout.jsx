@@ -208,7 +208,10 @@ export default function DashboardLayout() {
 
         {/* PAGE CONTENT */}
         <main className="flex-1 overflow-y-auto bg-[#F8FAFC]">
-          <Outlet context={{ currentUser, petitions, loadData, loadingList: loading, searchQuery, filteredPetitions }} />
+          <Outlet context={{ 
+            currentUser, petitions, loadData, loadingList: loading, 
+            searchQuery, filteredPetitions, openNotifications: () => setIsNotificationsOpen(true) 
+          }} />
         </main>
       </div>
     </div>
