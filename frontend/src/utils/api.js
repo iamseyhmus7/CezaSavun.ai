@@ -76,3 +76,23 @@ export async function generatePetition(file, clientName = "") {
   }
   return res.json(); // { petition_id, status, draft_petition, quality_score, errors }
 }
+
+/** WeasyPrint üzerinden güvenli, JWT token destekli PDF indirimi */
+export async function downloadPetitionPDF(id) {
+  const res = await apiFetch(`/petitions/${id}/download`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "PDF indirilemedi.");
+  }
+  
+  // Gelen byteları Blob olarak alıp zorla indir
+  const blob = await res.blob();
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `Itiraz_Dilekcesi_${id.split('-')[0]}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  window.URL.revokeObjectURL(url);
+}
