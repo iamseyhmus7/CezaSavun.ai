@@ -5,6 +5,7 @@ from app.models.rag import RagResult
 
 class AgentState(TypedDict):
     # Girdi Verileri
+    petition_id: Optional[str]
     image_path: Optional[str]
     input_text: Optional[str]
     
