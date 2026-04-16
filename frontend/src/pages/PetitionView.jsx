@@ -8,7 +8,7 @@ import {
   BookOpen, Star, Clock, Loader2, User
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { fetchPetition } from '../utils/api';
+import { fetchPetition, downloadPetitionPDF } from '../utils/api';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function getScoreData(score) {
@@ -169,10 +169,15 @@ export default function PetitionView() {
               <Download size={15} /> İndir (.txt)
             </button>
             <button
-              onClick={() => navigate(`/petition/${id}/preview`)}
+              onClick={async () => {
+                try {
+                  await downloadPetitionPDF(id);
+                  toast.success('Dilekçe başarıyla indirildi!');
+                } catch (e) { toast.error('İndirme hatası!'); }
+              }}
               className="flex items-center gap-2 px-5 py-2 bg-primary hover:bg-primary/90 rounded-xl text-sm font-bold text-white transition-colors shadow-lg shadow-primary/20"
             >
-              <Printer size={15} /> Önizle &amp; Yazdır
+              <Printer size={15} /> PDF Olarak İndir
             </button>
           </div>
         </div>
@@ -287,7 +292,10 @@ export default function PetitionView() {
                 {[
                   { icon: <Copy size={16} />,    label: 'Metni Kopyala',   sub: 'Panoya kopyala',       onClick: handleCopy,                                     highlight: false },
                   { icon: <Download size={16} />, label: 'TXT İndir',       sub: 'Düz metin formatı',    onClick: handleDownload,                                  highlight: false },
-                  { icon: <Printer size={16} />,  label: 'Yazdır / PDF',    sub: 'Resmi format önizleme', onClick: () => navigate(`/petition/${id}/preview`),       highlight: true  },
+                  { icon: <Printer size={16} />,  label: 'Yazdır / PDF',    sub: 'Resmi format indir', onClick: async () => {
+                      try { await downloadPetitionPDF(id); toast.success('İndiriliyor...'); } 
+                      catch(e) { toast.error('İndirme hatası!'); }
+                    },       highlight: true  },
                 ].map((action, i) => (
                   <button
                     key={i}
