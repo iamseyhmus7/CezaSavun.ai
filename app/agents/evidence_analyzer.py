@@ -1,9 +1,12 @@
 from app.agents.state import AgentState
 from app.agents import load_prompt, generate_json_from_gemini
 from app.models.evidence import EvidenceAnalysis
+from app.redis_publisher import publish_event
 
 def analyze_evidence(state: AgentState) -> AgentState:
     print("Agent: Evidence Analyzer çalışıyor...")
+    if state.get("petition_id"):
+        publish_event(state["petition_id"], 2, "processing", "Sistem: Yüklenen kanıt ve bulgular hukuki çerçevede değerlendiriliyor...", True)
     prompt_data = load_prompt("evidence_analyzer")
     
     # Kanıt analizi için gerekli bilgiler
