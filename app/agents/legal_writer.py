@@ -4,9 +4,12 @@ from app.agents import load_prompt, client
 from app.config import settings
 from app.rag.retriever import search_precedents
 from google.genai import types
+from app.redis_publisher import publish_event
 
 async def write_petition_async(state: AgentState) -> AgentState:
     print("Agent: Legal Writer çalışıyor...")
+    if state.get("petition_id"):
+        publish_event(state["petition_id"], 3, "processing", "Sistem: Qdrant RAG üzerinden emsal mahkeme kararları taranıyor ve dilekçe yazılıyor...", True)
     prompt_data = load_prompt("legal_writer")
     
     penalty = state.get("penalty_detail")
