@@ -17,6 +17,12 @@ celery_app.conf.update(
     timezone="Europe/Istanbul",
     enable_utc=True,
     task_track_started=True,
+    beat_schedule={
+        "check-deadlines-every-hour": {
+            "task": "check_deadlines",
+            "schedule": 3600.0, # Her saat başı çalıştır (Saniyede bir değil!)
+        },
+    },
 )
 
 # Yardımcı: Celery asenkron görevleri senktron context içinde çalıştırmak içindir
