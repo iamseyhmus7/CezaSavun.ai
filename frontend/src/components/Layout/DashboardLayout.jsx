@@ -7,22 +7,59 @@ import {
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
-import { fetchMe, fetchPetitions } from '../../utils/api';
+import { fetchMe, fetchPetitions, fetchNotifications, markNotificationRead } from '../../utils/api';
+
+const formatTime = (dateStr) => {
+  // Eğer tarih string'i Z veya + ile bitmiyorsa (UTC değilse), sonuna Z ekle
+  let normalizedDate = dateStr;
+  if (dateStr && !dateStr.includes('Z') && !dateStr.includes('+')) {
+    normalizedDate = dateStr + 'Z';
+  }
+  
+  const date = new Date(normalizedDate);
+  const now = new Date();
+  const diff = Math.max(0, (now - date) / 1000); // Negatif saniyeleri (milimetrik kaymalar) önle
+  
+  if (diff < 60) return "Az önce";
+  if (diff < 3600) return `${Math.floor(diff / 60)} dk önce`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)} sa önce`;
+  return date.toLocaleDateString('tr-TR');
+};
 
 export default function DashboardLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [currentUser, setCurrentUser] = useState(null);
   const [petitions, setPetitions] = useState([]);
+  const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [lastNotifId, setLastNotifId] = useState(null);
 
   const loadData = useCallback(async () => {
     try {
-      const [user, pts] = await Promise.all([fetchMe(), fetchPetitions()]);
+      const [user, pts, notifs] = await Promise.all([
+        fetchMe(), 
+        fetchPetitions(),
+        fetchNotifications()
+      ]);
       setCurrentUser(user);
       setPetitions(pts);
+      setNotifications(notifs);
+
+      // Otomatik Bildirim & Ses Tetikleyicisi
+      const unread = notifs.filter(n => !n.is_read);
+      if (unread.length > 0) {
+        const latest = unread[0];
+        // Eğer en son gördüğümüz bildirimden farklıysa ve tipi 'deadline' veya önemliyse
+        if (latest.id !== localStorage.getItem('last_notif_id')) {
+          localStorage.setItem('last_notif_id', latest.id);
+          try { new Audio("https://cdn.pixabay.com/download/audio/2021/08/04/audio_0625c1539c.mp3").play(); } catch(e){}
+          setIsNotificationsOpen(true);
+          toast(latest.title, { icon: '🔔' });
+        }
+      }
     } catch (e) {
       console.error('Veri yükleme hatası:', e);
     } finally {
@@ -155,7 +192,9 @@ export default function DashboardLayout() {
                 className={`w-10 h-10 flex items-center justify-center rounded-xl transition-all relative ${isNotificationsOpen ? 'bg-primary text-white' : 'text-slate-400 hover:bg-slate-100'}`}
               >
                 <Bell size={20} />
-                <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white" />
+                {notifications.some(n => !n.is_read) && (
+                  <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white" />
+                )}
               </button>
               
               <AnimatePresence>
@@ -164,25 +203,39 @@ export default function DashboardLayout() {
                     initial={{ opacity: 0, y: 10, scale: 0.95 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                    className="absolute right-0 mt-3 w-80 bg-white rounded-3xl shadow-2xl border border-slate-100 p-4 z-50"
+                    className="absolute right-0 mt-3 w-80 bg-white rounded-3xl shadow-2xl border border-slate-100 p-4 z-50 overflow-hidden"
                   >
                     <div className="flex items-center justify-between mb-4 px-2">
-                      <h4 className="font-black text-primary text-sm tracking-tight text-center">BİLDİRİMLER</h4>
-                      <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-bold">YENİ</span>
+                      <h4 className="font-black text-primary text-xs tracking-tight text-center uppercase">BİLDİRİMLER</h4>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-bold">{notifications.filter(n => !n.is_read).length} YENİ</span>
+                        <button onClick={() => setIsNotificationsOpen(false)} className="text-slate-300 hover:text-red-500"><X size={14}/></button>
+                      </div>
                     </div>
-                    <div className="space-y-2">
-                      <NotificationItem 
-                        title="Dilekçe Hazır" 
-                        desc="34 ABC 123 plakalı dilekçe tamamlandı."
-                        time="5 dk önce"
-                        icon={<Sparkles className="text-accent" size={14} />}
-                      />
-                      <NotificationItem 
-                        title="Süre Yaklaşıyor" 
-                        desc="Mehmet Yılmaz'ın itiraz süresi yarın doluyor."
-                        time="1 sa önce"
-                        icon={<Calendar className="text-amber-500" size={14} />}
-                      />
+                    <div className="space-y-1 max-h-[400px] overflow-y-auto pr-1">
+                      {notifications.length === 0 ? (
+                        <div className="py-12 text-center text-slate-300 text-[10px] font-bold uppercase tracking-widest">Henüz bildirim yok</div>
+                      ) : notifications.map(notif => (
+                        <NotificationItem 
+                          key={notif.id}
+                          title={notif.title} 
+                          desc={notif.message}
+                          time={formatTime(notif.created_at)}
+                          isRead={notif.is_read}
+                          icon={
+                            notif.type === 'deadline' ? <Calendar className="text-red-500" size={14} /> :
+                            notif.type === 'success' ? <Sparkles className="text-emerald-500" size={14} /> :
+                            <Bell className="text-accent" size={14} />
+                          }
+                          onClick={async () => {
+                            if (!notif.is_read) {
+                              await markNotificationRead(notif.id);
+                              loadData();
+                            }
+                            if (notif.link) navigate(notif.link);
+                          }}
+                        />
+                      ))}
                     </div>
                   </motion.div>
                 )}
@@ -235,18 +288,24 @@ function SidebarItem({ icon, active, onClick, label }) {
   );
 }
 
-function NotificationItem({ title, desc, time, icon }) {
+function NotificationItem({ title, desc, time, icon, isRead, onClick }) {
   return (
-    <div className="p-3 hover:bg-slate-50 rounded-2xl transition-colors cursor-pointer group border border-transparent hover:border-slate-100">
+    <div 
+      onClick={onClick}
+      className={`p-3 rounded-2xl transition-colors cursor-pointer group border border-transparent 
+        ${isRead ? 'opacity-60 bg-white border-slate-50' : 'bg-slate-50 border-slate-100 shadow-sm'}`}
+    >
       <div className="flex gap-3">
-        <div className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center group-hover:scale-110 transition-transform shadow-sm">
+        <div className={`w-8 h-8 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform shadow-sm
+          ${isRead ? 'bg-white' : 'bg-white'}`}>
           {icon}
         </div>
         <div className="flex-1">
           <p className="text-xs font-black text-primary mb-0.5">{title}</p>
-          <p className="text-[10px] text-slate-500 font-medium leading-tight">{desc}</p>
+          <p className="text-[10px] text-slate-500 font-medium leading-tight line-clamp-2">{desc}</p>
           <p className="text-[9px] text-slate-400 font-bold mt-1.5 uppercase tracking-widest">{time}</p>
         </div>
+        {!isRead && <div className="w-1.5 h-1.5 bg-red-500 rounded-full my-auto shrink-0" />}
       </div>
     </div>
   );
