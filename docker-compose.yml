@@ -30,6 +30,22 @@ services:
     networks:
       - tf_network
 
+  celery_beat:
+    build: .
+    container_name: traffic_defense_beat
+    command: celery -A app.core.celery_app beat --loglevel=info
+    env_file:
+      - .env
+    volumes:
+      - ./:/app
+    depends_on:
+      redis:
+        condition: service_started
+      api:
+        condition: service_started
+    networks:
+      - tf_network
+
   redis:
     image: redis:7-alpine
     container_name: traffic_defense_redis
