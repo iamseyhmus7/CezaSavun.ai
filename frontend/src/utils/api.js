@@ -96,3 +96,22 @@ export async function downloadPetitionPDF(id) {
   document.body.removeChild(a);
   window.URL.revokeObjectURL(url);
 }
+
+/** Bildirimleri getir */
+export async function fetchNotifications() {
+  const res = await apiFetch("/notifications/");
+  if (!res.ok) throw new Error("Bildirimler alınamadı.");
+  return res.json(); // Array<NotificationResponse>
+}
+
+/** Bildirimi okundu yap */
+export async function markNotificationRead(id) {
+  const res = await apiFetch(`/notifications/${id}/read`, { method: "PATCH" });
+  return res.ok;
+}
+
+/** Tümünü okundu yap */
+export async function markAllNotificationsRead() {
+  const res = await apiFetch("/notifications/mark-all-read", { method: "POST" });
+  return res.ok;
+}
