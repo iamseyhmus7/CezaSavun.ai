@@ -3,7 +3,7 @@ from app.agents import load_prompt, generate_json_from_gemini
 from app.models.penalty import PenaltyDetail
 from app.redis_publisher import publish_event
 
-def classify_penalty(state: AgentState) -> AgentState:
+async def classify_penalty(state: AgentState) -> AgentState:
     print("Agent: Classifier çalışıyor...")
     if state.get("petition_id"):
         publish_event(state["petition_id"], 1, "processing", "Sistem: Görsel OCR ve LLM analizine sokuluyor...", True)
