@@ -49,21 +49,18 @@ async def change_password(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Giriş yapmış kullanıcının şifresini değiştirir."""
-    if not current_user.hashed_password:
-        raise HTTPException(
-            status_code=400, 
-            detail="Sosyal hesaplar (Google vb.) için şifre değiştirilemez."
-        )
-    
-    if not verify_password(data.current_password, current_user.hashed_password):
-        raise HTTPException(status_code=400, detail="Mevcut şifre hatalı.")
+    """Giriş yapmış kullanıcının şifresini değiştirir veya ilk kez belirler."""
+    if current_user.hashed_password:
+        # Mevcut şifresi var → eski şifreyi doğrula
+        if not verify_password(data.current_password, current_user.hashed_password):
+            raise HTTPException(status_code=400, detail="Mevcut şifre hatalı.")
+    # Mevcut şifresi yoksa (Google kullanıcısı) → doğrudan yeni şifre belirleyebilir
     
     current_user.hashed_password = get_password_hash(data.new_password)
     db.add(current_user)
     await db.commit()
     
-    return {"message": "Şifreniz başarıyla değiştirildi"}
+    return {"message": "Şifreniz başarıyla güncellendi"}
 
 async def get_redis():
     r = redis.from_url(settings.REDIS_URL, encoding="utf-8", decode_responses=True)
