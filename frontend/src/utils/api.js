@@ -97,6 +97,19 @@ export async function downloadPetitionPDF(id) {
   window.URL.revokeObjectURL(url);
 }
 
+/** Dilekçe metnini güncelle (inline editor) */
+export async function updatePetitionContent(id, content) {
+  const res = await apiFetch(`/petitions/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ content }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Dilekçe güncellenemedi.");
+  }
+  return res.json();
+}
+
 /** Bildirimleri getir */
 export async function fetchNotifications() {
   const res = await apiFetch("/notifications/");
@@ -114,4 +127,11 @@ export async function markNotificationRead(id) {
 export async function markAllNotificationsRead() {
   const res = await apiFetch("/notifications/mark-all-read", { method: "POST" });
   return res.ok;
+}
+
+/** Admin istatistikleri */
+export async function fetchAdminStats() {
+  const res = await apiFetch("/admin/stats");
+  if (!res.ok) throw new Error("İstatistikler alınamadı.");
+  return res.json();
 }
