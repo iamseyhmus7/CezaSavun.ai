@@ -50,3 +50,14 @@ async def get_current_user(
 
     return user
 
+
+async def get_admin_user(
+    current_user: User = Depends(get_current_user),
+) -> User:
+    """Admin yetkisi kontrolü. is_admin=False olan kullanıcılar 403 alır."""
+    if not current_user.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Bu sayfaya erişim yetkiniz yok. Yönetici hesabı gerekli.",
+        )
+    return current_user
