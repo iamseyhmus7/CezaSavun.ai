@@ -5,10 +5,10 @@ import {
   ArrowLeft, Scale, Copy, Download, Printer,
   CheckCircle2, XCircle, AlertTriangle, FileText,
   Shield, Sparkles, Calendar, Tag, ChevronRight,
-  BookOpen, Star, Clock, Loader2, User
+  BookOpen, Star, Clock, Loader2, User, Edit3, Save, X
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { fetchPetition, downloadPetitionPDF } from '../utils/api';
+import { fetchPetition, downloadPetitionPDF, updatePetitionContent } from '../utils/api';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function getScoreData(score) {
@@ -37,7 +37,11 @@ export default function PetitionView() {
   const [loading, setLoading]   = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [copied, setCopied]     = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editContent, setEditContent] = useState('');
+  const [saving, setSaving]     = useState(false);
   const contentRef              = useRef();
+  const textareaRef             = useRef();
 
   // ── Fetch petition from DB ──
   useEffect(() => {
@@ -111,21 +115,12 @@ export default function PetitionView() {
     ? new Date(petition.created_at).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })
     : '—';
 
-  const qualityChecks = [
-    { label: 'KTK Madde Doğruluğu', weight: 30 },
-    { label: 'Emsal Karar Uyumu',   weight: 25 },
-    { label: 'Dilekçe Formatı',     weight: 20 },
-    { label: 'Hukuki Tutarlılık',   weight: 15 },
-    { label: 'Dil ve Üslup',        weight: 10 },
-  ];
-
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="min-h-screen bg-bg-main font-inter">
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="min-h-screen bg-bg-main font-inter pb-12">
 
       {/* ── STICKY HEADER ── */}
       <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-xl border-b border-slate-100 shadow-sm">
         <div className="max-w-[1400px] mx-auto px-6 h-16 flex items-center justify-between gap-4">
-          {/* Left */}
           <div className="flex items-center gap-4">
             <button
               onClick={() => navigate('/dashboard')}
@@ -141,15 +136,8 @@ export default function PetitionView() {
                 CezaSavun<span className="text-accent">.ai</span>
               </span>
             </div>
-            <div className="hidden md:flex items-center gap-1 text-slate-300">
-              <ChevronRight size={14} />
-              <span className="text-xs font-bold text-slate-400">
-                #{String(id).slice(0, 8).toUpperCase()}
-              </span>
-            </div>
           </div>
 
-          {/* Right actions */}
           <div className="flex items-center gap-2">
             <button
               onClick={handleCopy}
@@ -157,16 +145,10 @@ export default function PetitionView() {
             >
               <AnimatePresence mode="wait">
                 {copied
-                  ? <motion.span key="ok"  initial={{ scale: 0 }} animate={{ scale: 1 }} className="flex items-center gap-1.5"><CheckCircle2 size={15} className="text-emerald-500" />Kopyalandı</motion.span>
+                  ? <motion.span key="ok" initial={{ scale: 0 }} animate={{ scale: 1 }} className="flex items-center gap-1.5"><CheckCircle2 size={15} className="text-emerald-500" />Kopyalandı</motion.span>
                   : <motion.span key="cp" initial={{ scale: 0 }} animate={{ scale: 1 }} className="flex items-center gap-1.5"><Copy size={15} />Kopyala</motion.span>
                 }
               </AnimatePresence>
-            </button>
-            <button
-              onClick={handleDownload}
-              className="hidden sm:flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-xl text-sm font-bold text-primary transition-colors"
-            >
-              <Download size={15} /> İndir (.txt)
             </button>
             <button
               onClick={async () => {
@@ -177,7 +159,7 @@ export default function PetitionView() {
               }}
               className="flex items-center gap-2 px-5 py-2 bg-primary hover:bg-primary/90 rounded-xl text-sm font-bold text-white transition-colors shadow-lg shadow-primary/20"
             >
-              <Printer size={15} /> PDF Olarak İndir
+              <Printer size={15} /> PDF İndir
             </button>
           </div>
         </div>
@@ -185,201 +167,213 @@ export default function PetitionView() {
 
       {/* ── MAIN ── */}
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-8">
-        <div className="grid xl:grid-cols-[1fr_360px] gap-8 items-start">
+        <div className="grid xl:grid-cols-[1fr_400px] gap-8 items-start">
 
-          {/* ═══ LEFT ═══ */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="space-y-6"
-          >
+          {/* ═══ LEFT: PETITION ═══ */}
+          <div className="space-y-6">
             {/* Status Banner */}
-            <div className={`rounded-3xl p-5 border-2 ${sd.bg} ${sd.border} flex flex-wrap items-center gap-4`}>
-              <div className={`w-[72px] h-[72px] rounded-2xl flex flex-col items-center justify-center border-2 ${sd.border} bg-white shrink-0`}>
-                <span className={`text-2xl font-black ${sd.color}`}>{score}</span>
-                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">/ 100</span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className={`font-extrabold ${sd.color} text-lg`}>{sd.label} Kalite Skoru</p>
-                <p className="text-sm text-slate-500 font-medium mt-0.5">
-                  {petition.status === 'approved'
-                    ? '✅ AI kalite kontrolünden geçti'
-                    : '⚠️ Manuel inceleme gerektirebilir'}
-                </p>
-              </div>
-              <div className="flex items-center gap-2 ml-auto">
-                <Sparkles size={14} className="text-accent" />
-                <span className="text-xs font-bold text-slate-400">Gemini Flash · {petition.iteration_count} revizyon</span>
-              </div>
-            </div>
-
-            {/* Meta Info — gerçek DB verisi */}
-            <div className="glass-card rounded-3xl p-5 grid sm:grid-cols-3 gap-4">
-              {[
-                { icon: <User size={15} />,     label: 'Müvekkil',    value: petition.client_name   || '—' },
-                { icon: <Tag size={15} />,      label: 'Plaka',       value: petition.vehicle_plate || '—' },
-                { icon: <Calendar size={15} />, label: 'Oluşturuldu', value: petitionDate },
-              ].map((item, i) => (
-                <div key={i} className="flex items-center gap-3">
-                  <div className="w-9 h-9 bg-slate-50 border border-slate-100 rounded-xl flex items-center justify-center text-accent shrink-0">
-                    {item.icon}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">{item.label}</p>
-                    <p className="font-bold text-primary text-sm truncate">{item.value}</p>
-                  </div>
+            <div className={`rounded-3xl p-6 border-2 ${sd.bg} ${sd.border} flex items-center justify-between shadow-sm overflow-hidden relative`}>
+              <div className="relative z-10 flex items-center gap-5">
+                <div className={`w-16 h-16 rounded-2xl flex flex-col items-center justify-center border-2 ${sd.border} bg-white shadow-sm`}>
+                  <span className={`text-2xl font-black ${sd.color}`}>{score}</span>
+                  <span className="text-[10px] font-bold text-slate-400">SKOR</span>
                 </div>
-              ))}
+                <div>
+                  <h1 className="text-xl font-black text-primary mb-1">Dilekçeniz Hazır!</h1>
+                  <p className="text-sm text-slate-500 font-medium max-w-sm">
+                    {petition.status === 'approved' 
+                      ? 'AI Uzmanımız tarafından onaylanan yüksek kaliteli bir dilekçe üretildi.' 
+                      : 'Kalite kontrol aşamasında bazı uyarılar alındı, lütfen inceleyin.'}
+                  </p>
+                </div>
+              </div>
+              <div className="hidden md:block">
+                <div className="flex flex-col items-end gap-1">
+                   <div className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-100 rounded-full shadow-sm">
+                      <Clock size={14} className="text-amber-500" />
+                      <span className="text-xs font-bold text-slate-500">{petitionDate}</span>
+                   </div>
+                   <div className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-100 rounded-full shadow-sm mt-2">
+                      <Tag size={13} className="text-accent" />
+                      <span className="text-xs font-bold text-slate-500 tracking-wider font-mono">{petition.vehicle_plate || 'PLAKA BELİRSİZ'}</span>
+                   </div>
+                </div>
+              </div>
+              <Sparkles className="absolute right-0 top-0 text-accent/10 w-32 h-32 -mr-8 -mt-8" />
             </div>
 
-            {/* Petition Text */}
-            <div className="glass-card rounded-3xl overflow-hidden" ref={contentRef}>
-              <div className="px-7 py-5 border-b border-slate-100 flex items-center justify-between gap-4">
-                <h2 className="font-extrabold text-primary flex items-center gap-2 text-base">
-                  <BookOpen size={18} className="text-accent" />
-                  Dilekçe Metni
-                </h2>
+            {/* Content Card */}
+            <div className="glass-card rounded-[32px] overflow-hidden shadow-dashboard">
+              <div className="bg-slate-50/50 px-8 py-5 border-b border-slate-100 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-primary/5 rounded-xl flex items-center justify-center text-primary">
+                    <FileText size={20} />
+                  </div>
+                  <h3 className="font-extrabold text-primary">
+                    {isEditing ? 'Dilekçeyi Düzenle' : 'İtiraz Dilekçesi'}
+                  </h3>
+                </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-bold text-slate-400 bg-slate-50 border border-slate-100 px-3 py-1.5 rounded-full">
-                    {lines.filter(l => l.type !== 'spacer').length} satır
-                  </span>
-                  <button onClick={handleCopy} className="sm:hidden text-slate-400 hover:text-accent transition-colors p-1">
-                    <Copy size={16} />
-                  </button>
+                  {isEditing ? (
+                    <>
+                      <button
+                        onClick={() => { setIsEditing(false); setEditContent(''); }}
+                        className="flex items-center gap-1.5 px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-xl text-sm font-bold text-slate-500 transition-colors"
+                      >
+                        <X size={16} /> İptal
+                      </button>
+                      <button
+                        onClick={async () => {
+                          setSaving(true);
+                          try {
+                            await updatePetitionContent(id, editContent);
+                            setPetition({ ...petition, content: editContent });
+                            setIsEditing(false);
+                            toast.success('Dilekçe başarıyla güncellendi!');
+                          } catch (e) {
+                            toast.error(e.message);
+                          } finally { setSaving(false); }
+                        }}
+                        disabled={saving}
+                        className="flex items-center gap-1.5 px-5 py-2 bg-emerald-500 hover:bg-emerald-600 rounded-xl text-sm font-bold text-white transition-colors shadow-lg shadow-emerald-500/20 disabled:opacity-50"
+                      >
+                        {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                        {saving ? 'Kaydediliyor...' : 'Kaydet'}
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => { setEditContent(petition.content || ''); setIsEditing(true); }}
+                        className="flex items-center gap-1.5 px-4 py-2 bg-accent/10 hover:bg-accent/20 rounded-xl text-sm font-bold text-accent transition-colors"
+                      >
+                        <Edit3 size={16} /> Düzenle
+                      </button>
+                      <button onClick={handleDownload} className="p-2 hover:bg-slate-200 rounded-lg text-slate-400 transition-colors">
+                        <Download size={18} />
+                      </button>
+                      <button onClick={handleCopy} className="p-2 hover:bg-slate-200 rounded-lg text-slate-400 transition-colors">
+                        <Copy size={18} />
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
-
-              <div className="px-7 py-6 space-y-1 max-h-[65vh] overflow-y-auto scroll-smooth">
-                {lines.length === 0 ? (
-                  <p className="text-slate-400 text-sm text-center py-8">Dilekçe içeriği bulunamadı.</p>
-                ) : lines.map((line) => {
-                  if (line.type === 'spacer')
-                    return <div key={line.key} className="h-2" />;
-                  if (line.type === 'header')
-                    return (
-                      <p key={line.key} className="font-extrabold text-primary text-sm tracking-wide pt-5 pb-1 border-t border-slate-100 mt-4 first:border-t-0 first:pt-0">
-                        {line.content}
-                      </p>
-                    );
-                  if (line.type === 'numbered')
-                    return (
-                      <p key={line.key} className="text-slate-700 text-sm leading-relaxed font-semibold pl-4">
-                        {line.content}
-                      </p>
-                    );
-                  return (
-                    <p key={line.key} className="text-slate-600 text-sm leading-relaxed">
-                      {line.content}
-                    </p>
-                  );
-                })}
-              </div>
-            </div>
-          </motion.div>
-
-          {/* ═══ RIGHT SIDEBAR ═══ */}
-          <motion.aside
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.2 }}
-            className="space-y-5 sticky top-24"
-          >
-            {/* Quick Actions */}
-            <div className="glass-card rounded-3xl p-6">
-              <h3 className="font-extrabold text-primary text-xs uppercase tracking-widest mb-4">Hızlı İşlemler</h3>
-              <div className="space-y-3">
-                {[
-                  { icon: <Copy size={16} />,    label: 'Metni Kopyala',   sub: 'Panoya kopyala',       onClick: handleCopy,                                     highlight: false },
-                  { icon: <Download size={16} />, label: 'TXT İndir',       sub: 'Düz metin formatı',    onClick: handleDownload,                                  highlight: false },
-                  { icon: <Printer size={16} />,  label: 'Yazdır / PDF',    sub: 'Resmi format indir', onClick: async () => {
-                      try { await downloadPetitionPDF(id); toast.success('İndiriliyor...'); } 
-                      catch(e) { toast.error('İndirme hatası!'); }
-                    },       highlight: true  },
-                ].map((action, i) => (
-                  <button
-                    key={i}
-                    onClick={action.onClick}
-                    className={`w-full flex items-center gap-3 p-4 rounded-2xl transition-all group text-left border
-                      ${action.highlight
-                        ? 'bg-primary/5 hover:bg-primary/10 border-primary/20'
-                        : 'bg-slate-50 hover:bg-accent/5 border-slate-100 hover:border-accent/30'}`}
-                  >
-                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-colors
-                      ${action.highlight
-                        ? 'bg-primary text-white'
-                        : 'bg-white border border-slate-100 text-slate-400 group-hover:text-accent group-hover:border-accent/30'}`}
-                    >
-                      {action.icon}
-                    </div>
-                    <div>
-                      <p className="font-bold text-sm text-primary">{action.label}</p>
-                      <p className="text-[11px] text-slate-400 mt-0.5">{action.sub}</p>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Quality Breakdown */}
-            <div className="glass-card rounded-3xl p-6">
-              <h3 className="font-extrabold text-primary text-xs uppercase tracking-widest mb-5">Kalite Analizi</h3>
-              <div className="space-y-4">
-                {qualityChecks.map((item, i) => (
-                  <div key={i}>
-                    <div className="flex justify-between items-center mb-1.5">
-                      <span className="text-[11px] font-bold text-slate-600">{item.label}</span>
-                      <span className="text-[10px] font-extrabold text-slate-400">%{item.weight}</span>
-                    </div>
-                    <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${score}%` }}
-                        transition={{ delay: 0.5 + i * 0.1, duration: 0.8, ease: 'easeOut' }}
-                        className={`h-full rounded-full ${sd.barColor}`}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Legal Reminder */}
-            <div className="rounded-3xl p-6 bg-gradient-to-br from-primary via-primary to-[#1e3a5f] text-white overflow-hidden relative">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -translate-y-10 translate-x-10" />
-              <div className="relative">
-                <div className="flex items-center gap-2 mb-3">
-                  <Shield size={16} className="text-accent" />
-                  <span className="font-extrabold text-xs tracking-widest uppercase text-accent">Hukuki Hatırlatma</span>
-                </div>
-                <p className="text-sm text-white/80 leading-relaxed">
-                  Trafik cezasına itiraz için <strong className="text-white">ceza tebliğ tarihinden itibaren 15 gün</strong> içinde
-                  Sulh Ceza Hakimliği'ne başvurmanız gerekmektedir.
-                </p>
-                <div className="flex items-center gap-2 mt-4 pt-4 border-t border-white/10">
-                  <Clock size={13} className="text-white/50" />
-                  <span className="text-[11px] text-white/50 font-medium">5271 sayılı CMK Madde 267</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Rating */}
-            <div className="glass-card rounded-3xl p-5 flex items-center gap-4">
-              <div className="flex gap-1">
-                {[1, 2, 3, 4, 5].map(s => (
-                  <Star
-                    key={s}
-                    size={18}
-                    className={s <= Math.round(score / 20) ? 'text-amber-400 fill-amber-400' : 'text-slate-200 fill-slate-200'}
+              <div className="p-10 bg-white" ref={contentRef}>
+                {isEditing ? (
+                  <textarea
+                    ref={textareaRef}
+                    value={editContent}
+                    onChange={(e) => setEditContent(e.target.value)}
+                    className="w-full min-h-[500px] p-6 text-sm text-slate-700 leading-relaxed border-2 border-accent/20 rounded-2xl focus:border-accent focus:ring-2 focus:ring-accent/10 outline-none resize-y font-mono bg-slate-50/50 transition-colors"
+                    placeholder="Dilekçe metnini buraya yazın..."
                   />
-                ))}
-              </div>
-              <div>
-                <p className="text-xs font-extrabold text-primary">AI Kalite Değerlendirmesi</p>
-                <p className="text-[11px] text-slate-400">Gemini Flash analizi</p>
+                ) : (
+                  <div className="max-w-[800px] mx-auto space-y-1">
+                    {lines.map((line) => {
+                      if (line.type === 'spacer') return <div key={line.key} className="h-4" />;
+                      if (line.type === 'header') return <p key={line.key} className="font-black text-primary text-base uppercase tracking-tight py-4 first:pt-0">{line.content}</p>;
+                      if (line.type === 'numbered') return <p key={line.key} className="text-slate-700 text-sm font-semibold leading-relaxed pl-4 mb-2">{line.content}</p>;
+                      return <p key={line.key} className="text-slate-600 text-sm leading-relaxed mb-1">{line.content}</p>;
+                    })}
+                  </div>
+                )}
               </div>
             </div>
-          </motion.aside>
+          </div>
+
+          {/* ═══ RIGHT: LEGAL REFERENCES (RAG) ═══ */}
+          <aside className="space-y-6 sticky top-24">
+            <div className="glass-card rounded-[32px] p-8 border-accent/20 border">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 bg-accent/10 rounded-2xl flex items-center justify-center text-accent">
+                   <Shield size={20} />
+                </div>
+                <div>
+                   <h3 className="font-extrabold text-primary leading-tight">Hukuki Dayanaklar</h3>
+                   <p className="text-[10px] uppercase font-bold text-slate-400 tracking-widest mt-0.5">Yapay Zeka Savunma Stratejisi</p>
+                </div>
+              </div>
+
+              {/* RAG References List */}
+              <div className="space-y-4">
+                {(!petition.rag_references || petition.rag_references.length === 0) ? (
+                   <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 text-center">
+                      <BookOpen size={24} className="mx-auto text-slate-300 mb-2" />
+                      <p className="text-xs font-bold text-slate-400">Bu dilekçe için spesifik mevzuat verisi bulunamadı.</p>
+                   </div>
+                ) : (
+                  petition.rag_references.map((item, idx) => (
+                    <motion.div 
+                       key={idx}
+                       initial={{ opacity: 0, x: 20 }}
+                       animate={{ opacity: 1, x: 0 }}
+                       transition={{ delay: 0.3 + idx * 0.1 }}
+                       className="group p-5 rounded-2xl bg-white border border-slate-100 hover:border-accent/40 hover:shadow-lg transition-all cursor-default"
+                    >
+                       <div className="flex items-center justify-between mb-3">
+                          <span className="px-3 py-1 bg-accent/5 text-accent text-[10px] font-black rounded-lg uppercase">
+                             {item.madde_no || 'MADDE BILGISI'}
+                          </span>
+                          <Star size={14} className="text-amber-400 fill-amber-400" />
+                       </div>
+                       <p className="text-xs font-bold text-primary mb-2 line-clamp-2">
+                          {item.ozet || 'Mevzuat özeti yüklenemedi.'}
+                       </p>
+                       <div className="pt-3 border-t border-slate-50 space-y-2">
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">Uzman İtiraz Argümanı:</p>
+                          <div className="flex flex-wrap gap-1.5">
+                             {(item.itiraz_argumanlari || []).slice(0, 2).map((arg, i) => (
+                               <span key={i} className="text-[10px] font-bold text-slate-500 bg-slate-50 px-2 py-1 rounded-md border border-slate-100">
+                                  {arg}
+                               </span>
+                             ))}
+                          </div>
+                          <p className="text-[10px] text-accent font-black mt-2 flex items-center gap-1">
+                             <ChevronRight size={12} /> EMSAL: {item.ilgili_emsal || 'Görüntüle'}
+                          </p>
+                       </div>
+                    </motion.div>
+                  ))
+                )}
+              </div>
+              
+              <div className="mt-8 pt-8 border-t border-slate-100">
+                 <div className="flex items-center justify-between mb-4">
+                    <span className="text-xs font-extrabold text-primary">Argüman Gücü</span>
+                    <span className="text-xs font-black text-emerald-500">Kuvvetli</span>
+                 </div>
+                 <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                    <motion.div 
+                       initial={{ width: 0 }}
+                       animate={{ width: `${score}%` }}
+                       className={`h-full ${sd.barColor}`}
+                    />
+                 </div>
+                 <p className="text-[10px] text-slate-400 mt-4 leading-relaxed italic">
+                    * Bu dilekçe 2918 sayılı KTK ve ilgili yönetmeliklere tam uyumlu olarak, semantik arama motorumuz tarafından en alakalı emsal kararlar taranarak üretilmiştir.
+                 </p>
+              </div>
+            </div>
+
+            {/* Legal Advisor Card */}
+            <div className="p-6 rounded-[32px] bg-primary text-white shadow-xl shadow-primary/20 relative overflow-hidden group">
+               <div className="relative z-10">
+                 <h4 className="font-extrabold text-sm mb-2 flex items-center gap-2">
+                    <Clock size={16} className="text-accent" />
+                    Süre Takibi
+                 </h4>
+                 <p className="text-xs text-white/70 leading-relaxed mb-4">
+                    Tebliğ tarihinden itibaren <strong className="text-white">15 gün</strong> içinde itirazınızı yapmayı unutmayın.
+                 </p>
+                 <button className="w-full py-3 bg-white/10 hover:bg-white/20 transition-colors rounded-xl text-[11px] font-black uppercase tracking-widest border border-white/20">
+                    Süre Hatırlatıcı Kur
+                 </button>
+               </div>
+               <Scale size={120} className="absolute -right-8 -bottom-8 text-white/5 group-hover:rotate-12 transition-transform duration-700" />
+            </div>
+          </aside>
+
         </div>
       </div>
     </motion.div>
