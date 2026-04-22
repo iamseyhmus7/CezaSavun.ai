@@ -44,7 +44,7 @@ async def async_run_pipeline(petition_id: str, file_path: str, mime_type: str, f
 
     final_state = None
     try:
-        final_state = app_graph.invoke(initial_state)
+        final_state = await app_graph.ainvoke(initial_state)
     except Exception as e:
         publish_event(petition_id, 4, "failed", f"Graf hatası: {str(e)}", False)
         # Update DB to failed
@@ -109,6 +109,10 @@ async def async_run_pipeline(petition_id: str, file_path: str, mime_type: str, f
             
             ea = final_state.get("evidence_analysis")
             petition_record.evidence_analysis = ea.dict() if hasattr(ea, "dict") else ea
+            
+            # RAG sonuçlarını kaydet
+            rag_results = final_state.get("rag_results", [])
+            petition_record.rag_references = [r.dict() if hasattr(r, "dict") else r for r in rag_results]
             
             await session.commit()
             
