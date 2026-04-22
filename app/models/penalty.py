@@ -16,6 +16,7 @@ class PenaltyDetail(BaseModel):
     penalty_code: Optional[str] = None
     penalty_amount: Optional[float] = None
     penalty_date: Optional[date] = None
+    penalty_serial_no: Optional[str] = None
     penalty_location: Optional[str] = None
     vehicle_plate: Optional[str] = None
     confidence_score: float = Field(default=0.0, ge=0, le=1)
