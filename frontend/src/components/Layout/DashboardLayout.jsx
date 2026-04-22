@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Scale, Home, FolderOpen, Users, Calendar, 
   Settings, LogOut, Search, Bell, Sparkles, X,
-  Menu
+  Menu, BarChart3
 } from 'lucide-react';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -136,6 +136,14 @@ export default function DashboardLayout() {
             onClick={() => navigate('/calendar')}
             label="Takvim"
           />
+          {currentUser?.is_admin && (
+            <SidebarItem 
+              icon={<BarChart3 size={22} />} 
+              active={isActive('/admin')} 
+              onClick={() => navigate('/admin')}
+              label="Yönetim"
+            />
+          )}
         </nav>
 
         <div className="mt-auto flex flex-col gap-4">
