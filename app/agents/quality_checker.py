@@ -1,7 +1,7 @@
 from app.agents.state import AgentState
 from app.agents import load_prompt, generate_json_from_gemini
 from app.redis_publisher import publish_event
-def check_quality(state: AgentState) -> AgentState:
+async def check_quality(state: AgentState) -> AgentState:
     current_iter = state.get("iteration_count", 0) + 1
     state["iteration_count"] = current_iter
     print(f"Agent: Quality Checker çalışıyor... (Tur: {current_iter}/3)")
