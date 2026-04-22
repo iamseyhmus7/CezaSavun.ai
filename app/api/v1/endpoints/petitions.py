@@ -49,6 +49,7 @@ class PetitionDetail(BaseModel):
     quality_score: Optional[int]
     iteration_count: int
     created_at: datetime
+    rag_references: Optional[List[dict]] = None
 
     model_config = {"from_attributes": True}
 
@@ -193,6 +194,7 @@ async def get_petition(
         quality_score=petition.quality_score,
         iteration_count=petition.iteration_count,
         created_at=petition.created_at,
+        rag_references=petition.rag_references
     )
 
 @router.get("/{petition_id}/download")
@@ -244,3 +246,30 @@ async def delete_petition(
     await db.delete(petition)
     await db.commit()
     return {"message": "Dilekçe başarıyla silindi"}
+
+
+class PetitionUpdateRequest(BaseModel):
+    content: str
+
+@router.patch("/{petition_id}")
+async def update_petition_content(
+    petition_id: UUID,
+    data: PetitionUpdateRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Dilekçe metnini günceller. Sadece sahibi düzenleyebilir."""
+    result = await db.execute(
+        select(Petition).where(
+            Petition.id == petition_id,
+            Petition.user_id == current_user.id
+        )
+    )
+    petition = result.scalars().first()
+
+    if not petition:
+        raise HTTPException(status_code=404, detail="Dilekçe bulunamadı veya düzenleme yetkiniz yok.")
+
+    petition.content = data.content
+    await db.commit()
+    return {"message": "Dilekçe başarıyla güncellendi"}
