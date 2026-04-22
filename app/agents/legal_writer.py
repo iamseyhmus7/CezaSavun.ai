@@ -2,44 +2,55 @@ import asyncio
 from app.agents.state import AgentState
 from app.agents import load_prompt, client
 from app.config import settings
-from app.rag.retriever import search_precedents
 from google.genai import types
 from app.redis_publisher import publish_event
 
-async def write_petition_async(state: AgentState) -> AgentState:
+async def write_petition(state: AgentState) -> AgentState:
+    """
+    Kıdemli Trafik Hukuku Avukatı rolünde, RAG'dan gelen mevzuat ve emsal kararları 
+    kullanarak profesyonel dilekçeyi yazar.
+    """
     print("Agent: Legal Writer çalışıyor...")
     if state.get("petition_id"):
-        publish_event(state["petition_id"], 3, "processing", "Sistem: Qdrant RAG üzerinden emsal mahkeme kararları taranıyor ve dilekçe yazılıyor...", True)
+        publish_event(state["petition_id"], 3, "processing", "Sistem: Zenginleştirilmiş mevzuat verileri kullanılarak dilekçe yazılıyor...", True)
+    
     prompt_data = load_prompt("legal_writer")
     
     penalty = state.get("penalty_detail")
     evidence = state.get("evidence_analysis")
+    rag_results = state.get("rag_results", [])
     
-    penalty_code = penalty.penalty_code if penalty else ""
-    # Qdrant'tan RAG araması yap
-    query = f"Hız ihlali kararları"
-    if evidence and evidence.defense_arguments:
-        query = " ".join(evidence.defense_arguments)
-        
-    rag_results = await search_precedents(penalty_code, query, limit=2)
-    state["rag_results"] = rag_results
+    # Kararları ve Mevzuat Bilgilerini string'e dök (Zenginleştirilmiş Metadata Formatı)
+    rag_context_list = []
+    for r in rag_results:
+        context_item = (
+            f"MADDE: {r.madde_no} ({r.fikra_bent})\n"
+            f"ÖZET: {r.ozet}\n"
+            f"İTİRAZ STRATEJİSİ: {', '.join(r.itiraz_argumanlari)}\n"
+            f"EMSAL: {r.ilgili_emsal}"
+        )
+        rag_context_list.append(context_item)
     
-    # Kararları string'e dök
-    rag_context = "\n\n".join([f"Özet: {r.summary}\nKarar: {r.full_text}" for r in rag_results])
+    rag_context = "\n\n".join(rag_context_list)
     
     content = f"""
     -- CEZA DETAYI --
-    Madde: {penalty_code}
-    Tür: {penalty.penalty_category if penalty else "Bilinmiyor"}
+    Plaka: {penalty.vehicle_plate if penalty else "Bilinmiyor"}
+    Tarih: {penalty.penalty_date if penalty else "Bilinmiyor"}
+    Seri No: {penalty.penalty_serial_no if penalty else "Bilinmiyor"}
+    Konum: {penalty.penalty_location if penalty else "Bilinmiyor"}
+    Madde: {penalty.penalty_code if penalty else "Belirtilmemiş"}
+    Kategori: {penalty.penalty_category.value if penalty and hasattr(penalty.penalty_category, 'value') else "Bilinmiyor"}
+    Miktar: {penalty.penalty_amount if penalty else "Bilinmiyor"} TL
     
     -- KANIT ANALİZİ --
-    Zayıflıklar: {[v.description for v in evidence.vulnerabilities] if evidence else []}
-    Argümanlar: {evidence.defense_arguments if evidence else []}
+    Tespit Edilen Açıklar: {[v.description for v in evidence.vulnerabilities] if evidence else []}
+    Kullanıcı Savunma Argümanları: {evidence.defense_arguments if evidence else []}
     
-    -- EMSAL KARARLAR (RAG) --
+    -- İLGİLİ MEVZUAT VE HUKUKİ STRATEJİLER (RAG) --
     {rag_context}
     
-    Yukarıdaki bilgilere dayanarak dilekçeyi yaz.
+    Talimat: Yukarıdaki mevzuat maddelerini, emsal kararları ve özellikle ajan tarafından üretilen 'İTİRAZ STRATEJİSİ' önerilerini kullanarak dilekçeyi yaz.
     """
     
     # Düz string dönüşümü için
@@ -55,20 +66,4 @@ async def write_petition_async(state: AgentState) -> AgentState:
     except Exception as e:
         state["errors"].append(f"Legal Writer hatası: {e}")
         
-    return state
-
-def write_petition(state: AgentState) -> AgentState:
-    # LangGraph içinden asyncio çağrısı
-    import builtins
-    try:
-        loop = asyncio.get_running_loop()
-    except RuntimeError:
-        loop = None
-        
-    if loop and loop.is_running():
-        # Zaten bir loop içindeyiz, task olarak atıp beklemesini simüle etsek de asenkron yapıda çalışması lazım
-        # MVP aşamasında basitçe senkron çalışmasını sağlayalım (langgraph kısıtlarını aşmak için)
-        state = asyncio.run_coroutine_threadsafe(write_petition_async(state), loop).result()
-    else:
-        state = asyncio.run(write_petition_async(state))
     return state
