@@ -17,6 +17,7 @@ import Petitions from './pages/Petitions';
 import Clients from './pages/Clients';
 import Calendar from './pages/Calendar';
 import PetitionView from './pages/PetitionView';
+import AdminDashboard from './pages/AdminDashboard';
 import PetitionPreview from './pages/PetitionPreview';
 import DashboardLayout from './components/Layout/DashboardLayout';
 import Login from './Login';
@@ -70,6 +71,7 @@ export default function App() {
               <Route path="/calendar" element={<Calendar />} />
               <Route path="/petition/:id" element={<PetitionView />} />
               <Route path="/petition/:id/preview" element={<PetitionPreview />} />
+              <Route path="/admin" element={<AdminDashboard />} />
             </Route>
           </Route>
 
