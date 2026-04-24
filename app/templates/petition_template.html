@@ -1,127 +1,98 @@
 <!DOCTYPE html>
 <html lang="tr">
-
 <head>
     <meta charset="UTF-8">
     <title>İtiraz Dilekçesi</title>
     <style>
         @page {
             size: A4;
-            margin: 2.5cm 2.5cm 2.5cm 3cm;
-            /* YUKARI, SAĞ, AŞAĞI, SOL */
-
+            margin: 2.5cm 2.5cm 2.5cm 3cm; /* YUKARI, SAĞ, AŞAĞI, SOL - Sol margin dosya teli için geniş */
+            
             @bottom-center {
-                content: "Bu dilekçe cezasavun.ai yapay zeka altyapısı ile oluşturulmuştur.";
-                font-family: 'Times New Roman', serif;
+                content: "Bu dilekçe CezaSavun.ai yapay zeka altyapısı ile referans amaçlı oluşturulmuştur.";
+                font-family: 'Times New Roman', Times, serif;
                 font-style: italic;
-                font-size: 9pt;
+                font-size: 8pt;
                 color: #7f8c8d;
             }
-
+            
             @bottom-right {
                 content: "Sayfa " counter(page) "/" counter(pages);
-                font-family: 'Times New Roman', serif;
+                font-family: 'Times New Roman', Times, serif;
                 font-size: 9pt;
                 color: #7f8c8d;
             }
 
-            /* Watermark overlay using advanced background */
-            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="800" height="800"><text x="400" y="400" transform="rotate(-45 400 400)" text-anchor="middle" font-family="Arial" font-size="60" font-weight="bold" fill="%23e0e0e0" opacity="0.4">CezaSavun.AI</text></svg>');
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="800" height="800"><text x="400" y="400" transform="rotate(-45 400 400)" text-anchor="middle" font-family="Arial" font-size="60" font-weight="bold" fill="%23e0e0e0" opacity="0.3">CezaSavun.AI</text></svg>');
             background-position: center;
             background-repeat: no-repeat;
         }
 
         body {
-            font-family: 'Times New Roman', serif;
+            font-family: 'Times New Roman', Times, serif;
             font-size: 12pt;
-            line-height: 1.5;
+            line-height: 1.5; /* Resmi evrak standardı */
             color: #000000;
         }
 
-        /* Standart Paragraf */
-        .text-para {
-            text-align: justify;
-            text-indent: 1.25cm;
-            orphans: 3;
-            widows: 3;
-            margin-top: 0;
-            margin-bottom: 0.2cm;
-            /* Boşluklar acımasızca azaltıldı */
-        }
-
-        /* Başlıklar ve Meta Bilgiler (İTİRAZ EDEN vb) */
-        .text-header {
-            font-weight: bold;
-            margin-top: 0.6cm;
-            margin-bottom: 0.1cm;
-            text-align: left;
-            text-indent: 0;
-            page-break-after: avoid;
-        }
-
-        /* Numaralandırılmış Listeler (Deliller, İtiraz Sebepleri) */
-        .text-list {
-            text-align: justify;
-            margin-left: 1.25cm;
-            text-indent: -0.6cm;
-            margin-top: 0.1cm;
-            margin-bottom: 0.1cm;
-        }
-
-        /* Prevent breaking after headings */
-        h1,
-        h2,
-        h3,
-        h4,
-        h5,
-        h6 {
-            page-break-after: avoid;
-        }
-
-        /* Tarih - Sağ Üst */
-        .date {
-            text-align: right;
-            margin-bottom: 1.5cm;
-            font-weight: normal;
-        }
-
-        /* Makam Başlığı - Ortalı, Kalın, Büyük Harf */
-        .authority-title {
+        /* Başlıklar */
+        h1, h2, h3, h4 {
             text-align: center;
             font-weight: bold;
             text-transform: uppercase;
-            margin-bottom: 1.5cm;
-            margin-top: 1cm;
-            text-indent: 0;
-            /* Override indent para-title */
+            margin-top: 24pt;
+            margin-bottom: 12pt;
+            page-break-after: avoid;
+            font-size: 12pt; /* Mahkeme dilekçesinde başlıklar genelde çok büyük olmaz */
         }
 
-        /* Genel Metin Sınıfları */
-        .content-body {
-            white-space: pre-wrap;
-            /* Preserve line breaks if any, but CSS limits it */
+        /* Standart Paragraflar */
+        p {
+            text-align: justify;
+            text-indent: 1.25cm; /* İlk satır girintisi */
+            margin-top: 0;
+            margin-bottom: 12pt;
+            orphans: 3;
+            widows: 3;
         }
 
-        .content-body p {
-            /* Applied via generic p rule, but scoped */
+        /* Listeler (Açıklama maddeleri) */
+        ul, ol {
+            text-align: justify;
+            margin-top: 0;
+            margin-bottom: 12pt;
+            padding-left: 1.25cm;
         }
 
-        /* İmza Bloğu - Sağ Alt */
+        li {
+            margin-bottom: 6pt;
+        }
+
+        /* Bold metinler (İTİRAZ EDEN: gibi kısımlar) */
+        strong, b {
+            font-weight: bold;
+        }
+
+        /* Tarih ve İmza Bloğu */
+        .header-date {
+            text-align: right;
+            margin-bottom: 24pt;
+        }
+
         .signature-block {
-            margin-top: 3cm;
+            margin-top: 48pt;
             float: right;
             text-align: center;
-            width: 5cm;
+            width: 6cm;
             page-break-inside: avoid;
         }
 
         .signature-name {
             font-weight: bold;
-            margin-bottom: 2cm;
-            /* Space for signature */
+            margin-bottom: 40pt; /* İmza için boşluk */
+            border-bottom: 1px dotted #000;
         }
 
-        /* Clear floats */
         .clearfix::after {
             content: "";
             clear: both;
@@ -129,24 +100,13 @@
         }
     </style>
 </head>
-
 <body>
 
-    <div class="date">{{ current_date }}</div>
+    <div class="header-date">{{ current_date }}</div>
 
-    <!-- Varsayılan makam. İleride AI'dan dehlenelebilir ama jenerik kalabilir. -->
-    <div class="authority-title">NÖBETÇİ SULH CEZA HAKİMLİĞİ'NE</div>
-
-    <div class="content-body">
-        {% for para in paragraphs %}
-        {% if para.type == 'header' %}
-        <div class="text-header">{{ para.text }}</div>
-        {% elif para.type == 'list_item' %}
-        <div class="text-list">{{ para.text }}</div>
-        {% else %}
-        <div class="text-para">{{ para.text }}</div>
-        {% endif %}
-        {% endfor %}
+    <!-- Markdown'dan çevrilen ham HTML içeriği buraya basılacak -->
+    <div class="markdown-content">
+        {{ content | safe }}
     </div>
 
     <div class="signature-block">
@@ -157,5 +117,4 @@
     <div class="clearfix"></div>
 
 </body>
-
 </html>
