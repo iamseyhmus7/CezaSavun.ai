@@ -1,0 +1,64 @@
+# ==============================================================================
+# KUBERNETES ÖĞRETİCİSİ - DERS 5: QDRANT VDB (VEKTÖR VERİTABANI)
+# Öğretmen Notu: Qdrant, yapay zekamızın beynidir. İçinde hukuki emsallerin 
+# vektör matrislerini tutar. Veri kaybı feci sonuçlar doğuracağı için 
+# bunu da tıpkı Postgres gibi "StatefulSet" olarak yaratıyoruz.
+# ==============================================================================
+
+# --- 1. Servis ---
+apiVersion: v1
+kind: Service
+metadata:
+  name: qdrant-service # ConfigMap'te QDRANT_URL olarak verdiğimiz adres
+spec:
+  selector:
+    app: qdrant
+  ports:
+    - name: http # Kubernetes Kuralı: Birden fazla port varsa HEPSİNİN bir adı olmalıdır!
+      protocol: TCP
+      port: 6333 # Qdrant REST API Portu
+      targetPort: 6333
+    - name: grpc # Qdrant gRPC portu da kullanabilir (İsteğe bağlı)
+      protocol: TCP
+      port: 6334
+      targetPort: 6334
+
+---
+
+# --- 2. StatefulSet (Kalıcı Durum Kümesi) ---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: qdrant
+spec:
+  serviceName: "qdrant-service"
+  replicas: 1
+  selector:
+    matchLabels:
+      app: qdrant
+  template:
+    metadata:
+      labels:
+        app: qdrant
+    spec:
+      containers:
+        - name: qdrant
+          image: qdrant/qdrant:v1.11.3 # Kullandığımız özel vektör DB sürümü
+          ports:
+            - containerPort: 6333
+            - containerPort: 6334
+          
+          # Hukuki vektörlerin K8s çöktüğünde silinmemesi için disk bağlantısı
+          volumeMounts:
+            - name: qdrant-data
+              mountPath: /qdrant/storage # Qdrant verilerini burada saklar
+              
+  # Kalıcı Disk Talep Mektubu
+  volumeClaimTemplates:
+    - metadata:
+        name: qdrant-data
+      spec:
+        accessModes: [ "ReadWriteOnce" ]
+        resources:
+          requests:
+            storage: 5Gi # Milyonlarca hukuki karar için 5 GB ayırıyoruz!
