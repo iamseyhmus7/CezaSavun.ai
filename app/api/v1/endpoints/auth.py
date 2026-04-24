@@ -78,12 +78,26 @@ async def register(user_in: UserCreate, db: AsyncSession = Depends(get_db), r: r
     # 2. Kullanıcı Kontrolü
     result = await db.execute(select(User).where(User.email == user_in.email))
     user = result.scalars().first()
-    if user:
-        raise HTTPException(
-            status_code=400,
-            detail="Bu e-posta adresi zaten kayıtlı.",
-        )
     
+    if user:
+        if user.is_verified:
+            raise HTTPException(
+                status_code=400,
+                detail="Bu e-posta adresi zaten kayıtlı.",
+            )
+        else:
+            # Hesap var ama doğrulanmamışsa, şifresini güncelle ve yeni OTP gönder
+            user.hashed_password = get_password_hash(user_in.password)
+            user.name = user_in.name
+            user.surname = user_in.surname
+            user.phone = user_in.phone
+            await db.commit()
+            
+            otp = "".join(random.choices(string.digits, k=6))
+            await r.setex(f"otp:{user.email}", 300, otp)
+            await send_otp_email(user.email, otp)
+            return user
+            
     # 3. Kullanıcı Oluşturma (Pasif)
     user_data = user_in.model_dump()
     user_data.pop("captcha_token")
@@ -127,17 +141,21 @@ async def verify_otp(verify_in: OTPVerify, db: AsyncSession = Depends(get_db), r
     return {"message": "Hesabınız başarıyla doğrulandı"}
 
 @router.post("/login", response_model=Token, dependencies=[Depends(RateLimiter(times=5, seconds=60))])
-async def login(user_in: UserLogin, db: AsyncSession = Depends(get_db)):
+async def login(user_in: UserLogin, db: AsyncSession = Depends(get_db), r: redis.Redis = Depends(get_redis)):
     result = await db.execute(select(User).where(User.email == user_in.email))
     user = result.scalars().first()
     if not user:
         raise HTTPException(status_code=400, detail="E-posta veya şifre hatalı")
     
-    if not user.is_verified:
-        raise HTTPException(status_code=403, detail="Hesabınız doğrulanmamış. Lütfen e-posta kodunu girin.", headers={"X-Error-Code": "unverified"})
-        
     if not verify_password(user_in.password, user.hashed_password):
         raise HTTPException(status_code=400, detail="E-posta veya şifre hatalı")
+        
+    if not user.is_verified:
+        # Doğrulanmamışsa yeni OTP oluştur ve gönder
+        otp = "".join(random.choices(string.digits, k=6))
+        await r.setex(f"otp:{user.email}", 300, otp)
+        await send_otp_email(user.email, otp)
+        raise HTTPException(status_code=403, detail="Hesabınız doğrulanmamış. Yeni e-posta kodu gönderildi.", headers={"X-Error-Code": "unverified"})
     
     access_token = create_access_token(subject=str(user.id))
     return {
