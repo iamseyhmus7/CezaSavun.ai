@@ -1,0 +1,37 @@
+# ==============================================================================
+# KUBERNETES ÖĞRETİCİSİ - DERS 8: CELERY BEAT (ZAMANLAYICI / CRONJOB)
+# Öğretmen Notu: Celery Beat, "Her sabah saat 9'da itiraz süresi dolanları bul"
+# gibi zamanlanmış görevleri (Schedule) tetikleyen saattir.
+# KRİTİK KURAL: Replicas SADECE VE SADECE 1 OLMALIDIR! Eğer 2 olursa,
+# iki farklı saat aynı anda görev tetikler ve mükerrer işlem oluşur.
+# ==============================================================================
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: celery-beat-deployment
+spec:
+  replicas: 1 # ASLA DEĞİŞTİRİLMEZ! Sadece 1 zamanlayıcı olmalı.
+  selector:
+    matchLabels:
+      app: celery-beat
+  template:
+    metadata:
+      labels:
+        app: celery-beat
+    spec:
+      containers:
+        - name: celery-beat
+          # Yine aynı kod havuzu (Aynı imaj)
+          image: iamseyhmus7/traffic-defense-api:latest
+          imagePullPolicy: IfNotPresent
+          
+          # Bu sefer saati (Beat) başlat komutu veriyoruz.
+          command: ["celery", "-A", "app.core.celery_app", "beat", "--loglevel=info"]
+          
+          # Ayarlar
+          envFrom:
+            - configMapRef:
+                name: tf-config
+            - secretRef:
+                name: tf-secrets
