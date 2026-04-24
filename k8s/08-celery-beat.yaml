@@ -23,7 +23,7 @@ spec:
       containers:
         - name: celery-beat
           # Yine aynı kod havuzu (Aynı imaj)
-          image: iamseyhmus7/traffic-defense-api:latest
+          image: seyhmusok/traffic-defense-api:latest
           imagePullPolicy: IfNotPresent
           
           # Bu sefer saati (Beat) başlat komutu veriyoruz.

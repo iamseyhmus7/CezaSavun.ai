@@ -42,7 +42,7 @@ spec:
         - name: traffic-defense-api
           # Docker Desktop'ın kendi içindeki imajımızı kullanacağız.
           # Adım 3'te terminalden oluşturacağımız imajın adıdır:
-          image: iamseyhmus7/traffic-defense-api:latest 
+          image: seyhmusok/traffic-defense-api:latest 
           
           # Eğer lokal imaj kullanıyorsak "Never" veya "IfNotPresent" yapmalıyız.
           # Aksi halde K8s gidip internetten (Docker Hub'dan) bulmaya çalışır ve HATA verir!

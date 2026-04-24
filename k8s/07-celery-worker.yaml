@@ -25,7 +25,7 @@ spec:
       containers:
         - name: celery-worker
           # API ile BİREBİR AYNI KODLARI çalıştırdığı için, aynı Docker imajını kullanıyoruz!
-          image: iamseyhmus7/traffic-defense-api:latest 
+          image: seyhmusok/traffic-defense-api:latest
           imagePullPolicy: IfNotPresent
           
           # Öğretmen Notu: İmaj aynı ama YAPIYOR OLDUĞU İŞ farklı!
