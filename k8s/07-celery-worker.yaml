@@ -1,0 +1,40 @@
+# ==============================================================================
+# KUBERNETES ÖĞRETİCİSİ - DERS 7: CELERY WORKER (ARKAPLAN İŞÇİSİ)
+# Öğretmen Notu: Bu bizim sessiz kahramanımızdır. API'den gelen "Dilekçe Yaz"
+# görevlerini Redis'ten okur ve arka planda çalıştırır.
+# Hiçbir port açmamıza veya Servis yazmamıza GEREK YOKTUR. 
+# Çünkü o dışarıdan istek almaz, sadece kendisi Redis'e bağlanıp istek çeker.
+# ==============================================================================
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: celery-worker-deployment
+spec:
+  # Eğer bekleyen 1000 tane dilekçe varsa, "replicas: 10" yapıp 
+  # 10 işçinin aynı anda çalışmasını sağlayabiliriz!
+  replicas: 1 
+  selector:
+    matchLabels:
+      app: celery-worker
+  template:
+    metadata:
+      labels:
+        app: celery-worker
+    spec:
+      containers:
+        - name: celery-worker
+          # API ile BİREBİR AYNI KODLARI çalıştırdığı için, aynı Docker imajını kullanıyoruz!
+          image: iamseyhmus7/traffic-defense-api:latest 
+          imagePullPolicy: IfNotPresent
+          
+          # Öğretmen Notu: İmaj aynı ama YAPIYOR OLDUĞU İŞ farklı!
+          # Dockerfile'daki CMD (uvicorn) komutunu Eziyoruz (Override) ve Celery başlatıyoruz.
+          command: ["celery", "-A", "app.core.celery_app", "worker", "--loglevel=info", "-P", "solo"]
+          
+          # Aynı şekilde tüm şifreleri ve ayarları alıyoruz.
+          envFrom:
+            - configMapRef:
+                name: tf-config
+            - secretRef:
+                name: tf-secrets
