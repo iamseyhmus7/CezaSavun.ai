@@ -62,7 +62,7 @@ import tempfile
 import uuid
 import app.core.celery_app  # Zorunlu import: FastAPI'nin varsayılan localhost yerine Redis broker'a ulaşması için
 from app.agents.tasks import run_petition_generation_task
-from app.services.pdf_generator import generate_petition_pdf
+from app.utils.pdf_generator import generate_petition_pdf
 
 @router.post("/generate", response_model=PetitionGenerateResponse)
 async def generate_petition(
@@ -205,14 +205,24 @@ async def download_petition_pdf(
 ):
     """Belirtilen ID'ye sahip dilekçenin A4 formatında WeasyPrint PDF'ini oluşturur ve indirir."""
     result = await db.execute(
-        select(Petition).where(Petition.id == petition_id, Petition.user_id == current_user.id)
+        select(Petition, Penalty)
+        .join(Penalty, Petition.penalty_id == Penalty.id)
+        .where(Petition.id == petition_id, Petition.user_id == current_user.id)
     )
-    petition = result.scalars().first()
+    row = result.first()
     
-    if not petition:
+    if not row:
         raise HTTPException(status_code=404, detail="Dilekçe bulunamadı veya yetkiniz yok.")
     
-    pdf_bytes = generate_petition_pdf(petition.content, petition.client_name)
+    petition, penalty = row
+    
+    petition_data = {
+        'content': petition.content,
+        'client_name': petition.client_name,
+        'penalty_serial_no': getattr(penalty, 'penalty_serial_no', 'Bilinmiyor')
+    }
+    
+    pdf_bytes = generate_petition_pdf(petition_data)
     
     return StreamingResponse(
         io.BytesIO(pdf_bytes),
