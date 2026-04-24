@@ -62,7 +62,7 @@ async def get_admin_stats(
     # Aylık dilekçe sayısı (son 6 ay)
     monthly_result = await db.execute(
         select(
-            func.strftime('%Y-%m', Petition.created_at).label("month"),
+            func.to_char(Petition.created_at, 'YYYY-MM').label("month"),
             func.count(Petition.id).label("count")
         )
         .group_by("month")
