@@ -1,0 +1,35 @@
+# ==============================================================================
+# KUBERNETES ÖĞRETİCİSİ - DERS 1: CONFIGMAP (YAPILANDIRMA HARİTASI)
+# Öğretmen Notu: ConfigMap, uygulamamızın şifre İÇERMEYEN, açıkça okunabilen 
+# ayarlarını tuttuğumuz yerdir. Eskiden ".env" dosyasında tuttuğumuz verilerdir.
+# ==============================================================================
+
+apiVersion: v1 # Kubernetes API'sinin çekirdek/temel versiyonunu kullanıyoruz.
+kind: ConfigMap # Yaratmak istediğimiz Kubernetes nesnesinin türü (Yapılandırma Haritası).
+metadata: # Bu nesnenin Kubernetes içindeki kimlik kartı.
+  name: tf-config # Bu ConfigMap'e verdiğimiz isim (tf = traffic defense). İlerde pod'lar bu ismi çağıracak.
+data: # Asıl verilerimizi (Anahtar: Değer şeklinde) tuttuğumuz bölüm.
+  
+  # 1. API Genel Ayarları
+  PROJECT_NAME: "Traffic Defense AI API" # Projemizin başlığı.
+  DEBUG: "True" # Hata ayıklama modunu açık tutuyoruz.
+  
+  # 2. İç Ağ (DNS) Bağlantı Adresleri
+  # Öğretmen Notu: Docker Compose'da veritabanına "db:5432" diye bağlanırdık.
+  # Kubernetes'te ise yazdığımız "Service" nesnesinin adını kullanırız. 
+  # Biz Postgres servisimizin adını "postgres-service" koyacağız.
+  
+  # Redis bağlantı adresi (redis-service ismindeki K8s servisine 6379 portundan bağlan)
+  REDIS_URL: "redis://redis-service:6379/0" 
+  
+  # Celery arka plan işçisinin mesajları dinleyeceği kuyruk adresi
+  CELERY_BROKER_URL: "redis://redis-service:6379/0"
+  
+  # Celery görev sonuçlarının kaydedileceği yer
+  CELERY_RESULT_BACKEND: "redis://redis-service:6379/0"
+  
+  # Yapay zeka vektör veritabanımız olan Qdrant'ın K8s içindeki adresi
+  QDRANT_URL: "http://qdrant-service:6333"
+  
+  # Qdrant içinde tutacağımız tablo (collection) adı
+  QDRANT_COLLECTION: "legal_precedents"
