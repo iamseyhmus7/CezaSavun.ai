@@ -1,0 +1,70 @@
+# ==============================================================================
+# KUBERNETES ÖĞRETİCİSİ - DERS 4: REDIS DEPLOYMENT VE SERVICE
+# Öğretmen Notu: Redis bir önbellek (cache) sunucusudur. Hızlı uçucu verileri 
+# tutar. Veritabanı kadar kritik olmasa da, Celery kuyruğu kaybolmasın diye 
+# küçük bir PVC (Kalıcı Disk) bağlayacağız.
+# ==============================================================================
+
+# --- 1. Servis (Ağ Geçidi) ---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-service # ConfigMap'te verdiğimiz REDIS_URL adresindeki isim.
+spec:
+  selector:
+    app: redis
+  ports:
+    - protocol: TCP
+      port: 6379 # Redis'in varsayılan portu
+      targetPort: 6379
+
+--- # Birden Fazla Kaynağı Tek Dosyada Toplamak: Aynı dosya içerisinde hem bir Service hem de bir Deployment (veya başka bir şey) tanımlamamıza olanak sağlar.
+
+# --- 2. Deployment (Dağıtım) ---
+# Öğretmen Notu: Deployment, K8s'in en çok kullanılan nesnesidir.
+# Eğer Redis çökerse, K8s bunu fark eder ve hemen yeni bir tane yaratır.
+apiVersion: apps/v1
+kind: Deployment 
+metadata:
+  name: redis-deployment
+spec:
+  replicas: 1 # 1 kopya çalışsın
+  selector:
+    matchLabels:
+      app: redis
+  template: # Konteyner şablonu
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+        - name: redis
+          image: redis:7-alpine # Docker Hub'dan çekilecek imaj
+          ports:
+            - containerPort: 6379
+          
+          # Kuyruk verileri silinmesin diye disk bağlıyoruz
+          volumeMounts:
+            - name: redis-data
+              mountPath: /data # Redis verilerini /data klasöründe tutar
+      
+      # Deployment'larda "volumeClaimTemplates" (Şablon) özelliği yoktur.
+      # Bu yüzden Volumes (Diskler) kısmında PVC referansı veririz.
+      volumes:
+        - name: redis-data
+          persistentVolumeClaim:
+            claimName: redis-pvc # Aşağıda tanımladığımız fişin (claim) adı
+
+---
+
+# --- 3. PersistentVolumeClaim (Kalıcı Disk Fişi) ---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: redis-pvc # Deployment'ın aradığı PVC'nin adı
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi # Redis için 1 GB disk yeterlidir.
