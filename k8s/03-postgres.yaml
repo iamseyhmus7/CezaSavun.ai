@@ -1,0 +1,76 @@
+# ==============================================================================
+# KUBERNETES ÖĞRETİCİSİ - DERS 3: STATEFULSET VE SERVICE (VERİTABANI VE İLETİŞİM)
+# Öğretmen Notu: Veritabanları (Postgres) özeldir. Onlar sıradan ve silinebilir
+# (Stateless) değildir. İçlerinde kalıcı veri tutarlar (Stateful). Bu yüzden 
+# "Deployment" yerine "StatefulSet" nesnesi kullanırız.
+# ==============================================================================
+
+# --- 1. Bölüm: Service (Ağ Geçidi) ---
+apiVersion: v1 # Servisler v1 altındadır.
+kind: Service # Service nesnesi oluşturuyoruz. Amacı: Sabit bir IP/İsim sağlamak.
+metadata:
+  name: postgres-service # ConfigMap'te verdiğimiz DATABASE_URL'deki o sihirli DNS ismi!
+spec: # Servisin özellikleri
+  selector: # Kimi temsil ediyor?
+    app: postgres # Etiketi "app: postgres" olan Pod'lara bu servisi bağla.
+  ports:
+    - protocol: TCP # İletişim protokolü
+      port: 5432 # Diğer uygulamaların (API'nin) ulaşacağı port
+      targetPort: 5432 # Kendi içindeki Postgres konteynerinin asıl portu
+
+--- # 3 Tire, aynı dosya içinde ikinci bir K8s nesnesine geçtiğimizi gösterir.
+
+# --- 2. Bölüm: StatefulSet (Veritabanı Yöneticisi) ---
+apiVersion: apps/v1 # StatefulSet'ler "apps/v1" ailesindendir.
+kind: StatefulSet # Kalıcı durumu (State) olan nesneler kümesi.
+metadata:
+  name: postgres # Adımız
+spec:
+  serviceName: "postgres-service" # Bağlı olduğumuz servisin adı
+  replicas: 1 # Sadece 1 adet veritabanı kopyası çalışsın.
+  selector:
+    matchLabels:
+      app: postgres # Kimleri yönetecek? Etiketi "postgres" olanları.
+  
+  template: # Pod (Konteyner) Şablonu. K8s bu şablona bakarak konteyneri yaratır.
+    metadata:
+      labels:
+        app: postgres # Bu konteynerin etiketi "postgres" olsun (Yukarıdaki selector ile eşleşir)
+    spec:
+      containers: # İçinde çalışacak konteynerler
+        - name: postgres # Konteynerin adı
+          image: postgres:15-alpine # Kullanılacak Docker İmajı (Docker Hub'dan iner)
+          ports:
+            - containerPort: 5432 # Konteynerin dinlediği port
+          
+          # Çevresel değişkenleri tek tek yazmak yerine, yukarıda yarattığımız
+          # Secret (Gizli Kasa) dosyasından çekeceğiz!
+          env:
+            - name: POSTGRES_USER # Konteynere verilecek değişkenin adı
+              valueFrom:
+                secretKeyRef: # Gizli kasadan referans al
+                  name: tf-secrets # Hangi gizli kasa?
+                  key: POSTGRES_USER # Kasanın içindeki hangi çekmece (anahtar)?
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: tf-secrets
+                  key: POSTGRES_PASSWORD
+            - name: POSTGRES_DB
+              value: "traffic_defense" # Gizli olmayan veriyi doğrudan yazabiliriz.
+          
+          # Kalıcı Disk Bağlantısı (Volume Mount)
+          volumeMounts:
+            - name: postgres-data # Aşağıda tanımlayacağımız diskin adı
+              mountPath: /var/lib/postgresql/data # Konteynerin içindeki veritabanı klasörü
+  
+  # Kalıcı Disk Talep Mektubu (Volume Claim Templates)
+  # Öğretmen Notu: K8s'e "Bana asla silinmeyecek bir disk ver" dilekçesidir.
+  volumeClaimTemplates:
+    - metadata:
+        name: postgres-data
+      spec:
+        accessModes: [ "ReadWriteOnce" ] # Sadece tek bir node tarafından okuma/yazma yapılabilir.
+        resources:
+          requests:
+            storage: 2Gi # K8s'ten 2 Gigabyte'lık bir sabit disk alanı istiyoruz!
