@@ -1,3 +1,4 @@
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
@@ -20,8 +21,8 @@ class Settings(BaseSettings):
     GEMINI_MODEL: str = "gemini-3-flash-preview"
     
     # Google OAuth
-    GOOGLE_CLIENT_ID: str = ""
-    GOOGLE_CLIENT_SECRET: str = ""
+    GOOGLE_CLIENT_ID: str = Field("", alias="CLIENT_ID")
+    GOOGLE_CLIENT_SECRET: str = Field("", alias="CLIENT_SECRET")
     
     # JWT Auth
     JWT_SECRET: str
