@@ -24,7 +24,7 @@ spec:
         - name: celery-beat
           # Yine aynı kod havuzu (Aynı imaj)
           image: seyhmusok/traffic-defense-api:latest
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           
           # Bu sefer saati (Beat) başlat komutu veriyoruz.
           command: ["celery", "-A", "app.core.celery_app", "beat", "--loglevel=info"]

@@ -43,10 +43,8 @@ spec:
           # Docker Desktop'ın kendi içindeki imajımızı kullanacağız.
           # Adım 3'te terminalden oluşturacağımız imajın adıdır:
           image: seyhmusok/traffic-defense-api:latest 
-          
-          # Eğer lokal imaj kullanıyorsak "Never" veya "IfNotPresent" yapmalıyız.
           # Aksi halde K8s gidip internetten (Docker Hub'dan) bulmaya çalışır ve HATA verir!
-          imagePullPolicy: IfNotPresent 
+          imagePullPolicy: Always  
           
           ports:
             - containerPort: 8000

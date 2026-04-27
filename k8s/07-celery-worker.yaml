@@ -26,7 +26,7 @@ spec:
         - name: celery-worker
           # API ile BİREBİR AYNI KODLARI çalıştırdığı için, aynı Docker imajını kullanıyoruz!
           image: seyhmusok/traffic-defense-api:latest
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           
           # Öğretmen Notu: İmaj aynı ama YAPIYOR OLDUĞU İŞ farklı!
           # Dockerfile'daki CMD (uvicorn) komutunu Eziyoruz (Override) ve Celery başlatıyoruz.
