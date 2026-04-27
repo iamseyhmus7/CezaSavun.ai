@@ -1,4 +1,4 @@
-name: Build and Push to Docker Hub
+name: Build, Test and Push
 
 on:
   push:
@@ -6,7 +6,45 @@ on:
   workflow_dispatch:
 
 jobs:
+  # 1. Aşama: Testler
+  test:
+    runs-on: ubuntu-latest
+    env:
+      # CI ortamı için sahte (dummy) değerler. 
+      # Testcontainers ve Mock'lar bu değerleri test sırasında ezecektir.
+      SECRET_KEY: ci-test-secret-key-123
+      DATABASE_URL: postgresql+asyncpg://user:pass@localhost:5432/db
+      REDIS_URL: redis://localhost:6379/0
+      QDRANT_URL: https://dummy.qdrant.io
+      QDRANT_API_KEY: dummy-key
+      GOOGLE_API_KEY: AIzaDummyKey
+      JWT_SECRET: ci-jwt-secret-key-123
+      APP_ENV: testing
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          # Testler için gerekli ek kütüphanelerin yüklü olduğundan emin olalım
+          pip install pytest pytest-asyncio pytest-mock testcontainers httpx
+
+      - name: Run Pytest
+        run: |
+          python -m pytest
+
+  # 2. Aşama: Docker Hub'a Push (Sadece testler geçerse çalışır)
   build-and-push:
+    needs: test # <--- KRİTİK: Testler geçmeden burası başlamaz!
     runs-on: ubuntu-latest
     
     steps:
