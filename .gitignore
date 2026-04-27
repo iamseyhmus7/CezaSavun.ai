@@ -27,3 +27,5 @@ celerybeat-schedule
 
 # Kubernetes
 k8s/*secrets*.yaml
+TESTING_JOURNEY_DETAIL.md
+WHY_TEST_AND_WHAT_WE_TESTED.md
