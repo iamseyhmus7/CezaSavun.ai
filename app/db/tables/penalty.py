@@ -1,6 +1,6 @@
 from sqlalchemy import Column, String, Numeric, Date, ForeignKey, DateTime, Uuid, JSON
 from sqlalchemy.sql import func
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, backref
 import uuid
 from app.db.base import Base
 
@@ -21,4 +21,4 @@ class Penalty(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     # İlişkiler
-    user = relationship("User", backref="penalties")
+    user = relationship("User", backref=backref("penalties", cascade="all, delete-orphan", passive_deletes=True))
