@@ -69,5 +69,7 @@ jobs:
           tags: |
             ${{ secrets.CEZASAVUNAI_ICIN_DOCKERHUB_USERNAME }}/traffic-defense-api:latest
             ${{ secrets.CEZASAVUNAI_ICIN_DOCKERHUB_USERNAME }}/traffic-defense-api:${{ github.sha }}
+          build-args: |
+            VITE_GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
