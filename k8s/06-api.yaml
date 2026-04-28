@@ -67,4 +67,6 @@ spec:
       # emptyDir: Sadece Pod yaşadığı sürece var olan geçici bir K8s klasörüdür.
       volumes:
         - name: uploads-dir
-          emptyDir: {}
+          hostPath:
+            path: /run/desktop/mnt/host/d/Trafik_Cezasi_Savunma_AI_Ajan_Mimarisi/uploads
+            type: DirectoryOrCreate

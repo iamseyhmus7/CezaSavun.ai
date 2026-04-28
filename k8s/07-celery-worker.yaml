@@ -33,8 +33,16 @@ spec:
           command: ["celery", "-A", "app.core.celery_app", "worker", "--loglevel=info", "-P", "solo"]
           
           # Aynı şekilde tüm şifreleri ve ayarları alıyoruz.
+          volumeMounts:
+            - mountPath: /app/uploads
+              name: uploads-dir
           envFrom:
             - configMapRef:
                 name: tf-config
             - secretRef:
                 name: tf-secrets
+      volumes:
+        - name: uploads-dir
+          hostPath:
+            path: /run/desktop/mnt/host/d/Trafik_Cezasi_Savunma_AI_Ajan_Mimarisi/uploads
+            type: DirectoryOrCreate
