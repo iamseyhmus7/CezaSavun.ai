@@ -22,8 +22,8 @@ class Settings(BaseSettings):
     EMBEDDING_MODEL: str = "gemini-embedding-001"
     
     # Google OAuth
-    GOOGLE_CLIENT_ID: str = Field("", alias="CLIENT_ID")
-    GOOGLE_CLIENT_SECRET: str = Field("", alias="CLIENT_SECRET")
+    GOOGLE_CLIENT_ID: str = ""
+    GOOGLE_CLIENT_SECRET: str = ""
     
     # JWT Auth
     JWT_SECRET: str
