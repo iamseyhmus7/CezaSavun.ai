@@ -19,7 +19,7 @@ async def search_legal_context(query: str, limit: int = 15) -> List[Dict[str, An
     try:
         # 1. Sorguyu vektörleştir
         response = genai_client.models.embed_content(
-            model="gemini-embedding-001",
+            model=settings.EMBEDDING_MODEL,
             contents=query,
             config=types.EmbedContentConfig(output_dimensionality=768)
         )
