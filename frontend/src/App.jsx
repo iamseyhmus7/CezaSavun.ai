@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { Toaster } from 'react-hot-toast';
@@ -31,14 +31,29 @@ import KVKK from './pages/Legal/KVKK';
 import NotFound from './pages/NotFound';
 
 export default function App() {
-  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+  const [googleClientId, setGoogleClientId] = useState(null);
+
+  useEffect(() => {
+    fetch('/api/v1/config')
+      .then(res => res.json())
+      .then(data => setGoogleClientId(data.google_client_id))
+      .catch(err => console.error("Config fetch error:", err));
+  }, []);
+
+  if (!googleClientId) {
+    return (
+      <div className="min-h-screen bg-[#0f172a] flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500" />
+      </div>
+    );
+  }
 
   return (
     <GoogleOAuthProvider clientId={googleClientId}>
       <BrowserRouter>
         <ScrollToTop />
         <Toaster position="top-right" reverseOrder={false} />
-        
+
         <Routes>
           {/* Public Landing Page */}
           <Route path="/" element={<LandingPage />} />
