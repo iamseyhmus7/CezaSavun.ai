@@ -102,7 +102,7 @@ async def process_and_ingest_pdf(file_path: str):
              embedding_input = f"KATEGORİ: {enrichment.get('kategori', '')}\nÖZET: {enrichment.get('ozet', '')}\nMETİN: {cleaned_text}"
              
              response = genai_client.models.embed_content(
-                model="gemini-embedding-001",
+                model=settings.EMBEDDING_MODEL,
                 contents=embedding_input,
                 config=types.EmbedContentConfig(output_dimensionality=768)
              )
