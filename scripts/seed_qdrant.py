@@ -5,17 +5,22 @@ from dotenv import load_dotenv
 from qdrant_client.models import PointStruct
 from google import genai
 from google.genai import types
+import sys
 
 # Bağımlılıklar
-import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from app.rag.qdrant_client import get_qdrant_client, init_qdrant_collection
+from app.config import settings
 
 load_dotenv()
 
-GEMINI_API_KEY = os.getenv("GOOGLE_API_KEY")
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.1-pro")
-QDRANT_COLLECTION = os.getenv("QDRANT_COLLECTION", "legal_precedents")
+# Tüm değerleri SADECE settings üzerinden alıyoruz!
+GEMINI_API_KEY = settings.GOOGLE_API_KEY
+GEMINI_MODEL = settings.GEMINI_MODEL
+QDRANT_COLLECTION = settings.QDRANT_COLLECTION
+EMBEDDING_MODEL = settings.EMBEDDING_MODEL
+
+load_dotenv()
 
 async def generate_synthetic_precedents(count: int = 5):
     """Gemini API kullanarak sentetik mahkeme kararları üretir."""
@@ -46,11 +51,18 @@ async def generate_synthetic_precedents(count: int = 5):
                 response_mime_type="application/json",
             ),
         )
-        data = json.loads(response.text)
+
+        # Markdown formatını temizle
+        raw_text = response.text.strip()
+        if raw_text.startswith("```json"):
+            raw_text = raw_text[7:]
+        if raw_text.endswith("```"):
+            raw_text = raw_text[:-3]
+            
+        data = json.loads(raw_text.strip())
         if isinstance(data, dict) and "data" in data:
             data = data["data"]
         
-        # Eğer liste değilse tekli obje döndürmüş olabilir
         if not isinstance(data, list):
             data = [data]
             
@@ -58,6 +70,7 @@ async def generate_synthetic_precedents(count: int = 5):
         return data[:count]
     except Exception as e:
         print(f"Sentetik veri üretimi sırasında hata: {e}")
+
         # Hata durumunda hardcoded örnek koyalım
         return [{
             "summary": "Radar uyarı levhası eksikliği nedeniyle cezanın iptali.",
@@ -89,8 +102,9 @@ async def seed_qdrant():
         try:
              # Metinleri vektöre dönüştür
              response = genai_client.models.embed_content(
-                 model="models/text-embedding-004",
-                 contents=item["summary"] + " " + item["full_text"]
+                 model=settings.EMBEDDING_MODEL,
+                 contents=item["summary"] + " " + item["full_text"],
+                 config=types.EmbedContentConfig(output_dimensionality=768)
              )
              vector = response.embeddings[0].values
              
