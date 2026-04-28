@@ -33,3 +33,7 @@ data: # Asıl verilerimizi (Anahtar: Değer şeklinde) tuttuğumuz bölüm.
   
   # Qdrant içinde tutacağımız tablo (collection) adı
   QDRANT_COLLECTION: "legal_precedents"
+
+  # GOOGLE EMBEDDİNG MODEL
+  GEMINI_MODEL: "gemini-3-flash-preview"
+  EMBEDDING_MODEL: "gemini-embedding-001"
