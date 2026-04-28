@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     # LLM
     GOOGLE_API_KEY: str
     GEMINI_MODEL: str = "gemini-3-flash-preview"
+    EMBEDDING_MODEL: str = "gemini-embedding-001"
     
     # Google OAuth
     GOOGLE_CLIENT_ID: str = Field("", alias="CLIENT_ID")
