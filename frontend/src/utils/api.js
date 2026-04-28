@@ -76,6 +76,12 @@ export async function generatePetition(file, clientName = "") {
   }
   return res.json(); // { petition_id, status, draft_petition, quality_score, errors }
 }
+/** Google Client ID ve public config'i backend'den çek */
+export async function fetchPublicConfig() {
+  const res = await fetch("/api/v1/config"); // token gerekmez, apiFetch değil!
+  if (!res.ok) throw new Error("Config alınamadı.");
+  return res.json(); // { google_client_id: "..." }
+}
 
 /** WeasyPrint üzerinden güvenli, JWT token destekli PDF indirimi */
 export async function downloadPetitionPDF(id) {
@@ -84,7 +90,7 @@ export async function downloadPetitionPDF(id) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.detail || "PDF indirilemedi.");
   }
-  
+
   // Gelen byteları Blob olarak alıp zorla indir
   const blob = await res.blob();
   const url = window.URL.createObjectURL(blob);

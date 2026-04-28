@@ -28,8 +28,8 @@ data: # Asıl verilerimizi (Anahtar: Değer şeklinde) tuttuğumuz bölüm.
   # Celery görev sonuçlarının kaydedileceği yer
   CELERY_RESULT_BACKEND: "redis://redis-service:6379/0"
   
-  # Yapay zeka vektör veritabanımız olan Qdrant'ın K8s içindeki adresi
-  QDRANT_URL: "http://qdrant-service:6333"
+  # Yapay zeka vektör veritabanımız olan Qdrant Cloud adresi
+  QDRANT_URL: "https://e56f0730-22bc-4393-b70d-a481019a32f0.eu-central-1-0.aws.cloud.qdrant.io:6333"
   
   # Qdrant içinde tutacağımız tablo (collection) adı
   QDRANT_COLLECTION: "legal_precedents"
