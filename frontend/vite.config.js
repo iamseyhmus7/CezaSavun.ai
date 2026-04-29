@@ -8,4 +8,15 @@ export default defineConfig({
     tailwindcss(),
     react(),
   ],
+  server: {
+    proxy: {
+      // '/api' ile başlayan tüm istekleri backend'e (8000 portuna) yönlendir
+      '/api': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+        secure: false,
+        ws: true, // WebSocket (gerçek zamanlı iletişim) desteğini aç
+      }
+    }
+  }
 })
