@@ -167,7 +167,7 @@ export default function PetitionView() {
 
       {/* ── MAIN ── */}
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-8">
-        <div className="grid xl:grid-cols-[1fr_400px] gap-8 items-start">
+        <div className="grid xl:grid-cols-[1fr_560px] gap-8 items-start">
 
           {/* ═══ LEFT: PETITION ═══ */}
           <div className="space-y-6">
@@ -269,12 +269,12 @@ export default function PetitionView() {
                     placeholder="Dilekçe metnini buraya yazın..."
                   />
                 ) : (
-                  <div className="max-w-[800px] mx-auto space-y-1">
+                  <div className="max-w-4xl mx-auto space-y-2">
                     {lines.map((line) => {
                       if (line.type === 'spacer') return <div key={line.key} className="h-4" />;
-                      if (line.type === 'header') return <p key={line.key} className="font-black text-primary text-base uppercase tracking-tight py-4 first:pt-0">{line.content}</p>;
-                      if (line.type === 'numbered') return <p key={line.key} className="text-slate-700 text-sm font-semibold leading-relaxed pl-4 mb-2">{line.content}</p>;
-                      return <p key={line.key} className="text-slate-600 text-sm leading-relaxed mb-1">{line.content}</p>;
+                      if (line.type === 'header') return <p key={line.key} className="font-black text-primary text-lg uppercase tracking-tight py-4 first:pt-0">{line.content}</p>;
+                      if (line.type === 'numbered') return <p key={line.key} className="text-slate-700 text-base font-bold leading-relaxed pl-4 mb-2">{line.content}</p>;
+                      return <p key={line.key} className="text-slate-600 text-base leading-relaxed mb-1">{line.content}</p>;
                     })}
                   </div>
                 )}
@@ -286,12 +286,12 @@ export default function PetitionView() {
           <aside className="space-y-6 sticky top-24">
             <div className="glass-card rounded-[32px] p-8 border-accent/20 border">
               <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 bg-accent/10 rounded-2xl flex items-center justify-center text-accent">
-                   <Shield size={20} />
+                <div className="w-12 h-12 bg-accent/10 rounded-2xl flex items-center justify-center text-accent">
+                   <Shield size={24} />
                 </div>
                 <div>
-                   <h3 className="font-extrabold text-primary leading-tight">Hukuki Dayanaklar</h3>
-                   <p className="text-[10px] uppercase font-bold text-slate-400 tracking-widest mt-0.5">Yapay Zeka Savunma Stratejisi</p>
+                   <h3 className="font-extrabold text-xl text-primary leading-tight">Hukuki Dayanaklar</h3>
+                   <p className="text-sm uppercase font-bold text-slate-400 tracking-widest mt-0.5">Yapay Zeka Savunma Stratejisi</p>
                 </div>
               </div>
 
@@ -311,26 +311,26 @@ export default function PetitionView() {
                        transition={{ delay: 0.3 + idx * 0.1 }}
                        className="group p-5 rounded-2xl bg-white border border-slate-100 hover:border-accent/40 hover:shadow-lg transition-all cursor-default"
                     >
-                       <div className="flex items-center justify-between mb-3">
-                          <span className="px-3 py-1 bg-accent/5 text-accent text-[10px] font-black rounded-lg uppercase">
+                        <div className="flex items-center justify-between mb-4">
+                          <span className="px-3 py-1 bg-accent/5 text-accent text-sm font-black rounded-lg uppercase">
                              {item.madde_no || 'MADDE BILGISI'}
                           </span>
-                          <Star size={14} className="text-amber-400 fill-amber-400" />
+                          <Star size={16} className="text-amber-400 fill-amber-400" />
                        </div>
-                       <p className="text-xs font-bold text-primary mb-2 line-clamp-2">
+                       <p className="text-base font-bold text-primary mb-3 line-clamp-2">
                           {item.ozet || 'Mevzuat özeti yüklenemedi.'}
                        </p>
-                       <div className="pt-3 border-t border-slate-50 space-y-2">
-                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">Uzman İtiraz Argümanı:</p>
-                          <div className="flex flex-wrap gap-1.5">
+                       <div className="pt-4 border-t border-slate-50 space-y-3">
+                          <p className="text-sm font-black text-slate-400 uppercase tracking-tighter">Uzman İtiraz Argümanı:</p>
+                          <div className="flex flex-wrap gap-2">
                              {(item.itiraz_argumanlari || []).slice(0, 2).map((arg, i) => (
-                               <span key={i} className="text-[10px] font-bold text-slate-500 bg-slate-50 px-2 py-1 rounded-md border border-slate-100">
+                               <span key={i} className="text-sm font-bold text-slate-500 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100">
                                   {arg}
                                </span>
                              ))}
                           </div>
-                          <p className="text-[10px] text-accent font-black mt-2 flex items-center gap-1">
-                             <ChevronRight size={12} /> EMSAL: {item.ilgili_emsal || 'Görüntüle'}
+                          <p className="text-sm text-accent font-black mt-3 flex items-center gap-1.5">
+                             <ChevronRight size={16} /> EMSAL: {item.ilgili_emsal || 'Görüntüle'}
                           </p>
                        </div>
                     </motion.div>
@@ -354,23 +354,6 @@ export default function PetitionView() {
                     * Bu dilekçe 2918 sayılı KTK ve ilgili yönetmeliklere tam uyumlu olarak, semantik arama motorumuz tarafından en alakalı emsal kararlar taranarak üretilmiştir.
                  </p>
               </div>
-            </div>
-
-            {/* Legal Advisor Card */}
-            <div className="p-6 rounded-[32px] bg-primary text-white shadow-xl shadow-primary/20 relative overflow-hidden group">
-               <div className="relative z-10">
-                 <h4 className="font-extrabold text-sm mb-2 flex items-center gap-2">
-                    <Clock size={16} className="text-accent" />
-                    Süre Takibi
-                 </h4>
-                 <p className="text-xs text-white/70 leading-relaxed mb-4">
-                    Tebliğ tarihinden itibaren <strong className="text-white">15 gün</strong> içinde itirazınızı yapmayı unutmayın.
-                 </p>
-                 <button className="w-full py-3 bg-white/10 hover:bg-white/20 transition-colors rounded-xl text-[11px] font-black uppercase tracking-widest border border-white/20">
-                    Süre Hatırlatıcı Kur
-                 </button>
-               </div>
-               <Scale size={120} className="absolute -right-8 -bottom-8 text-white/5 group-hover:rotate-12 transition-transform duration-700" />
             </div>
           </aside>
 
