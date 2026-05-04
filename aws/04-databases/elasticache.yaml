@@ -1,0 +1,66 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'CezaSavun.ai - Amazon ElastiCache for Redis'
+
+# Parameters
+Parameters:
+  EnvironmentName:
+    Description: Environment Name (e.g. dev, prod)
+    Type: String
+    Default: prod
+  CacheNodeType:
+    Description: ElastiCache node type
+    Type: String
+    Default: cache.t3.micro
+  NumCacheNodes:
+    Description: Number of cache nodes
+    Type: Number
+    Default: 1
+
+Resources:
+  # Redis Subnet Group
+  RedisSubnetGroup:
+    Type: AWS::ElastiCache::SubnetGroup
+    Properties:
+      Description: Subnets available for the Redis Cluster
+      SubnetIds: !Split
+        - ','
+        - Fn::ImportValue: !Sub '${EnvironmentName}-PrivateSubnets'
+
+  # Redis Security Group
+  RedisSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow Redis traffic from EKS
+      VpcId:
+        Fn::ImportValue: !Sub '${EnvironmentName}-VpcId'
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 6379
+          ToPort: 6379
+          CidrIp:
+            Fn::ImportValue: !Sub '${EnvironmentName}-VpcCidr'
+
+  # Redis Cache Cluster
+  RedisCluster:
+    Type: AWS::ElastiCache::CacheCluster
+    Properties:
+      Engine: redis
+      CacheNodeType: !Ref CacheNodeType
+      NumCacheNodes: !Ref NumCacheNodes
+      CacheSubnetGroupName: !Ref RedisSubnetGroup
+      VpcSecurityGroupIds:
+        - !Ref RedisSecurityGroup
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-redis'
+
+# Outputs
+Outputs:
+  RedisEndpointAddress:
+    Description: Redis Endpoint Address
+    Value: !GetAtt RedisCluster.RedisEndpoint.Address
+    Export:
+      Name: !Sub '${EnvironmentName}-RedisEndpointAddress'
+  RedisEndpointPort:
+    Description: Redis Port
+    Value: !GetAtt RedisCluster.RedisEndpoint.Port
