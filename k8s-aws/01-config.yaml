@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tf-config
+  namespace: cezasavun
+data:
+  PROJECT_NAME: "Traffic Defense AI - AWS PROD"
+  DEBUG: "False"
+  DB_HOST: "cezasavun-rds-postgresqldb-qiyora4oq87v.c1qaykq2exug.eu-central-1.rds.amazonaws.com"
+  DB_PORT: "5432"
+  DB_NAME: "postgres"
+  REDIS_URL: "redis://cez-re-nbvgznrw9iw3.adru2t.0001.euc1.cache.amazonaws.com:6379/0"
+  CELERY_BROKER_URL: "redis://cez-re-nbvgznrw9iw3.adru2t.0001.euc1.cache.amazonaws.com:6379/0"
+  CELERY_RESULT_BACKEND: "redis://cez-re-nbvgznrw9iw3.adru2t.0001.euc1.cache.amazonaws.com:6379/0"
+  AWS_S3_BUCKET: "cezasavunai-1777891691"
+  AWS_REGION: "eu-central-1"
+  QDRANT_URL: "https://e56f0730-22bc-4393-b70d-a481019a32f0.eu-central-1-0.aws.cloud.qdrant.io:6333"
+  QDRANT_COLLECTION: "legal_precedents"
+  GEMINI_MODEL: "gemini-3-flash-preview"
+  EMBEDDING_MODEL: "gemini-embedding-001"
