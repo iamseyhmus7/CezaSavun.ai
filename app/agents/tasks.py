@@ -13,14 +13,17 @@ from app.config import settings
 from app.redis_publisher import publish_event
 import uuid
 from datetime import datetime, timedelta, date
+from app.services.s3_service import s3_service
 
 async def async_run_pipeline(petition_id: str, file_path: str, mime_type: str, file_name: str):
     petition_uuid = uuid.UUID(petition_id)
     """Asenkron db operasyonları için sarmalayıcı."""
     
-    # 1. Dosyayı oku
-    with open(file_path, "rb") as f:
-        image_bytes = f.read()
+    # 1. Dosyayı S3'ten indir
+    image_bytes = s3_service.download_file(file_path)
+    if not image_bytes:
+        publish_event(petition_id, 4, "failed", "Hata: Dosya S3'ten alınamadı.", False)
+        return
 
     # 2. Graph State Başlat (Nodes publish_event atacak)
     initial_state = AgentState(
