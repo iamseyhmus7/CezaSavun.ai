@@ -23,9 +23,13 @@ mimari_notlar_adimi1.md
 uploads/
 celerybeat-schedule
 1.5.2918.pdf
+aws_migration_report.md
 
-
-# Kubernetes
-k8s/*secrets*.yaml
+# Kubernetes & AWS Secrets
+**/*secrets*.yaml
+.env
+.env.prod
+aws_migration_report.md
+k8s-aws/*secrets*.yaml
 TESTING_JOURNEY_DETAIL.md
 WHY_TEST_AND_WHAT_WE_TESTED.md
