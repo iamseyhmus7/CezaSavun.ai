@@ -1,0 +1,80 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'CezaSavun.ai - Amazon RDS for PostgreSQL'
+
+# Parametreler
+Parameters:
+  EnvironmentName:
+    Description: Environment Name (e.g. dev, prod)
+    Type: String
+    Default: prod
+  DBInstanceClass:
+    Description: RDS Instance Class
+    Type: String
+    Default: db.t3.micro
+  DBAllocatedStorage:
+    Description: Allocated Storage in GB
+    Type: Number
+    Default: 20
+  DBUsername:
+    Description: Master Username
+    Type: String
+    Default: postgres
+  DBPassword:
+    Description: Master Password
+    Type: String
+    NoEcho: true
+
+Resources:
+  # DB Subnet Group
+  DBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: !Sub 'RDS DB Subnet Group for ${EnvironmentName}'
+      SubnetIds: !Split
+        - ','
+        - Fn::ImportValue: !Sub '${EnvironmentName}-PrivateSubnets'
+
+  # DB Security Group
+  DBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow PostgreSQL traffic from EKS
+      VpcId:
+        Fn::ImportValue: !Sub '${EnvironmentName}-VpcId'
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          CidrIp:
+            Fn::ImportValue: !Sub '${EnvironmentName}-VpcCidr'
+
+  # PostgreSQL DB Instance
+  PostgreSQLDB:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      Engine: postgres
+      EngineVersion: '16.6'
+      DBInstanceClass: !Ref DBInstanceClass
+      AllocatedStorage: !Ref DBAllocatedStorage
+      MasterUsername: !Ref DBUsername
+      MasterUserPassword: !Ref DBPassword
+      DBSubnetGroupName: !Ref DBSubnetGroup
+      VPCSecurityGroups:
+        - !Ref DBSecurityGroup
+      MultiAZ: false
+      PubliclyAccessible: false
+      StorageType: gp3
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-postgres'
+
+# Outputs
+Outputs:
+  DBEndpointAddress:
+    Description: RDS Endpoint Address
+    Value: !GetAtt PostgreSQLDB.Endpoint.Address
+    Export:
+      Name: !Sub '${EnvironmentName}-DBEndpointAddress'
+  DBEndpointPort:
+    Description: RDS Port
+    Value: !GetAtt PostgreSQLDB.Endpoint.Port
