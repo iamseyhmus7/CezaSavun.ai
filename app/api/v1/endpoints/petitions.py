@@ -63,6 +63,7 @@ import uuid
 import app.core.celery_app  # Zorunlu import: FastAPI'nin varsayılan localhost yerine Redis broker'a ulaşması için
 from app.agents.tasks import run_petition_generation_task
 from app.utils.pdf_generator import generate_petition_pdf
+from app.services.s3_service import s3_service
 
 @router.post("/generate", response_model=PetitionGenerateResponse)
 async def generate_petition(
@@ -86,12 +87,13 @@ async def generate_petition(
             detail="Desteklenmeyen format. JPG, PNG, WEBP veya PDF yükleyin.",
         )
 
-    # 2. Dosyayı geçici olarak ortak bir klasöre kaydet (Celery konteyneri ile paylaşımlı)
-    upload_dir = os.path.join(os.getcwd(), "uploads")
-    os.makedirs(upload_dir, exist_ok=True)
-    temp_file_path = os.path.join(upload_dir, f"{uuid.uuid4()}_{file.filename}")
-    with open(temp_file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+    # 2. Dosyayı S3'e yükle
+    file_content = await file.read()
+    s3_key = f"uploads/{uuid.uuid4()}_{file.filename}"
+    success = s3_service.upload_file(file_content, s3_key)
+    
+    if not success:
+        raise HTTPException(status_code=500, detail="Dosya S3'e yüklenemedi.")
 
     # 3. Penalty (ceza) geçici kaydı oluştur
     penalty_record = Penalty(
@@ -118,7 +120,7 @@ async def generate_petition(
     # 5. Celery görevini tetikle (arkaplana gönder)
     run_petition_generation_task.delay(
         str(petition_record.id),
-        temp_file_path,
+        s3_key,
         file.content_type,
         file.filename
     )
