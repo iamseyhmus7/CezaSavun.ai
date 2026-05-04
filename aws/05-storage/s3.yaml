@@ -1,0 +1,56 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'CezaSavun.ai - S3 Bucket for Uploads and Petitions'
+
+# Parameters
+Parameters:
+  EnvironmentName:
+    Description: Environment Name (e.g. dev, prod)
+    Type: String
+    Default: prod
+  BucketName:
+    Description: S3 Bucket Name (Must be globally unique)
+    Type: String
+    Default: cezasavunai-uploads-bucket
+
+Resources:
+  # S3 Bucket
+  UploadsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref BucketName
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders:
+              - '*'
+            AllowedMethods:
+              - GET
+              - PUT
+              - POST
+            AllowedOrigins:
+              - '*'
+            MaxAge: 3000
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-uploads-bucket'
+
+# Outputs
+Outputs:
+  UploadsBucketName:
+    Description: S3 Bucket Name
+    Value: !Ref UploadsBucket
+    Export:
+      Name: !Sub '${EnvironmentName}-UploadsBucketName'
+  UploadsBucketArn:
+    Description: S3 Bucket ARN
+    Value: !GetAtt UploadsBucket.Arn
+    Export:
+      Name: !Sub '${EnvironmentName}-UploadsBucketArn'
