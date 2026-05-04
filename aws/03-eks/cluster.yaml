@@ -1,0 +1,81 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'CezaSavun.ai - EKS Cluster and Managed Node Group'
+
+# Parameters
+Parameters:
+  EnvironmentName:
+    Description: Environment Name (e.g. dev, prod)
+    Type: String
+    Default: prod
+  KubernetesVersion:
+    Description: Kubernetes Version
+    Type: String
+    Default: '1.31'
+  NodeInstanceType:
+    Description: EC2 Instance type for EKS nodes
+    Type: String
+    Default: t3.small
+  NodeMinSize:
+    Description: Min nodes
+    Type: Number
+    Default: 2
+  NodeMaxSize:
+    Description: Max nodes
+    Type: Number
+    Default: 4
+
+Resources:
+  # EKS Cluster
+  EKSCluster:
+    Type: AWS::EKS::Cluster
+    Properties:
+      Name: !Sub '${EnvironmentName}-cluster'
+      Version: !Ref KubernetesVersion
+      RoleArn:
+        Fn::ImportValue: !Sub '${EnvironmentName}-EKSClusterRoleArn'
+      ResourcesVpcConfig:
+        SubnetIds: !Split
+          - ','
+          - Fn::ImportValue: !Sub '${EnvironmentName}-PrivateSubnets'
+        EndpointPublicAccess: true
+        EndpointPrivateAccess: true
+      Logging:
+        ClusterLogging:
+          EnabledTypes:
+            - Type: api
+            - Type: audit
+            - Type: authenticator
+            - Type: controllerManager
+            - Type: scheduler
+
+  # Node Group
+  EKSNodeGroup:
+    Type: AWS::EKS::Nodegroup
+    DependsOn: EKSCluster
+    Properties:
+      ClusterName: !Ref EKSCluster
+      NodegroupName: !Sub '${EnvironmentName}-nodegroup'
+      NodeRole:
+        Fn::ImportValue: !Sub '${EnvironmentName}-EKSNodeRoleArn'
+      Subnets: !Split
+        - ','
+        - Fn::ImportValue: !Sub '${EnvironmentName}-PrivateSubnets'
+      InstanceTypes:
+        - !Ref NodeInstanceType
+      ScalingConfig:
+        MinSize: !Ref NodeMinSize
+        DesiredSize: !Ref NodeMinSize
+        MaxSize: !Ref NodeMaxSize
+      UpdateConfig:
+        MaxUnavailable: 1
+
+# Outputs
+Outputs:
+  EKSClusterName:
+    Description: EKS Cluster Name
+    Value: !Ref EKSCluster
+    Export:
+      Name: !Sub '${EnvironmentName}-EKSClusterName'
+  EKSClusterEndpoint:
+    Description: EKS Endpoint
+    Value: !GetAtt EKSCluster.Endpoint
