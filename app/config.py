@@ -16,6 +16,10 @@ class Settings(BaseSettings):
     QDRANT_API_KEY: str
     QDRANT_COLLECTION: str = "legal_precedents"
     
+    # AWS S3
+    AWS_S3_BUCKET: str = ""
+    AWS_REGION: str = "eu-central-1"
+    
     # LLM
     GOOGLE_API_KEY: str
     GEMINI_MODEL: str = "gemini-3-flash-preview"
