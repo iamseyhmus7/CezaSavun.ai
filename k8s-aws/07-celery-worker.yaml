@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: celery-worker
+  namespace: cezasavun
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: celery-worker
+  template:
+    metadata:
+      labels:
+        app: celery-worker
+    spec:
+      containers:
+        - name: celery-worker
+          image: seyhmusok/traffic-defense-api:latest
+          command: ["celery", "-A", "app.core.celery_app", "worker", "--loglevel=info"]
+          env:
+            - name: AWS_ROLE_ARN
+              value: ""
+            - name: AWS_WEB_IDENTITY_TOKEN_FILE
+              value: ""
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: tf-secrets
+                  key: AWS_ACCESS_KEY_ID
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: tf-secrets
+                  key: AWS_SECRET_ACCESS_KEY
+          envFrom:
+            - configMapRef:
+                name: tf-config
+            - secretRef:
+                name: tf-secrets
+          volumeMounts:
+            - name: temp-storage
+              mountPath: /app/uploads
+      volumes:
+        - name: temp-storage
+          emptyDir: {}
